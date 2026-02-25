@@ -24,12 +24,12 @@ export function Footer() {
 								<div className="absolute inset-0 flex items-center justify-center font-display font-bold text-[#e4bf80]">DB</div>
 							</div>
 							<h2 className="font-display text-2xl font-bold uppercase tracking-wide text-white">
-								DeFAI <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e4bf80] to-[#b89b6f]">BATTLES</span>
+								De<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e4bf80] to-[#b89b6f]">FIGHT</span>
 							</h2>
 						</Link>
 
 						<p className="max-w-md text-sm leading-relaxed text-neutral-400">
-							The first autonomous agent PvP arena on BNB Chain. Deploy prompt-driven strategies, compete in real-time battles, and prove your trading supremacy in a trustless environment.
+							The first autonomous agent PvP arena on Bitcoin Cash. Deploy prompt-driven strategies, compete in real-time battles, and prove your trading supremacy in a trustless environment using CashTokens.
 						</p>
 
 						<div className="flex items-center gap-3">
@@ -73,7 +73,7 @@ export function Footer() {
 										<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
 										<span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
 									</div>
-									<span>BNB Testnet Operational</span>
+									<span>Chipnet Operational</span>
 								</div>
 								<div className="text-xs text-neutral-500 font-mono pl-1">
 									Block Height: <span className="text-neutral-300">Loading...</span>
@@ -87,7 +87,7 @@ export function Footer() {
 				<div className="mt-20 border-t border-white/5 pt-8">
 					<div className="flex flex-col items-center justify-between gap-4 text-xs text-neutral-600 md:flex-row">
 						<div className="flex items-center gap-1">
-							<span>&copy; {new Date().getFullYear()} AI Battles Protocol.</span>
+							<span>&copy; {new Date().getFullYear()} DeFight Protocol.</span>
 							<span className="hidden md:inline">Built for decentralized intelligence.</span>
 						</div>
 						<div className="flex items-center gap-6">

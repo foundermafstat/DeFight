@@ -147,7 +147,7 @@ export default function WelcomePage() {
 				walletAddress={authProfile?.address || walletAddress}
 				walletChainLabel={walletChainLabel}
 				onConnect={() => {
-					void runSafeAction(connectWalletAndAuthenticate);
+					void runSafeAction(() => connectWalletAndAuthenticate(""));
 				}}
 				onOpenForge={() => router.push("/forge")}
 			/>

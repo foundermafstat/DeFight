@@ -58,9 +58,9 @@ export default function ModelsPage() {
 
 	const [modelName, setModelName] = useState(agentName || "Market Maverick");
 	const [prompt, setPrompt] = useState(strategy);
-	const [symbol, setSymbol] = useState("BNBUSDT");
+	const [symbol, setSymbol] = useState("BCHUSDT");
 	const [llmModel, setLlmModel] = useState("gpt-4.1-mini");
-	const [tokensInput, setTokensInput] = useState("BNB,USDT");
+	const [tokensInput, setTokensInput] = useState("BCH,USDT");
 	const [isSaving, setIsSaving] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [models, setModels] = useState<SavedPromptModel[]>([]);
@@ -246,7 +246,7 @@ export default function ModelsPage() {
 							type="button"
 							className="mt-8 bg-[#e4bf80] text-black hover:bg-[#cda460] px-8"
 							onClick={() => {
-								void runSafeAction(connectWalletAndAuthenticate);
+								void runSafeAction(() => connectWalletAndAuthenticate(""));
 							}}
 						>
 							Connect Wallet
@@ -301,7 +301,7 @@ export default function ModelsPage() {
 													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#e4bf80]/50 h-10 uppercase font-mono text-xs"
 													value={symbol}
 													onChange={(event) => setSymbol(event.target.value)}
-													placeholder="BNBUSDT"
+													placeholder="BCHUSDT"
 												/>
 											</div>
 											<div className="space-y-2">
@@ -325,40 +325,40 @@ export default function ModelsPage() {
 												className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#e4bf80]/50 h-10 uppercase font-mono text-xs"
 												value={tokensInput}
 												onChange={(event) => setTokensInput(event.target.value)}
-												placeholder="BNB, USDT"
+												placeholder="BCH, USDT"
 											/>
-										</div>
 
-										<div className="space-y-2">
-											<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
-												<Database className="h-3 w-3" /> Strategy Prompt
-											</label>
-											<Textarea
-												className="min-h-[200px] resize-none border-white/10 bg-black/20 p-3 text-sm leading-relaxed text-neutral-200 placeholder:text-neutral-700 focus:border-[#e4bf80]/50 font-mono"
-												value={prompt}
-												onChange={(event) => setPrompt(event.target.value)}
-											/>
-										</div>
+											<div className="space-y-2">
+												<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
+													<Database className="h-3 w-3" /> Strategy Prompt
+												</label>
+												<Textarea
+													className="min-h-[200px] resize-none border-white/10 bg-black/20 p-3 text-sm leading-relaxed text-neutral-200 placeholder:text-neutral-700 focus:border-[#e4bf80]/50 font-mono"
+													value={prompt}
+													onChange={(event) => setPrompt(event.target.value)}
+												/>
+											</div>
 
-										<div className="pt-2 flex gap-3">
-											<Button
-												type="submit"
-												disabled={isSaving}
-												className="flex-1 bg-[#e4bf80] text-black hover:bg-[#cda460]"
-											>
-												{isSaving ? "Saving..." : "Save Model"}
-											</Button>
-											<Button
-												type="button"
-												variant="secondary"
-												disabled={isLoading}
-												onClick={() => {
-													void runSafeAction(refreshModels, { fallbackMessage: "Cannot refresh model cards" });
-												}}
-												className="border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300"
-											>
-												<RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-											</Button>
+											<div className="pt-2 flex gap-3">
+												<Button
+													type="submit"
+													disabled={isSaving}
+													className="flex-1 bg-[#e4bf80] text-black hover:bg-[#cda460]"
+												>
+													{isSaving ? "Saving..." : "Save Model"}
+												</Button>
+												<Button
+													type="button"
+													variant="secondary"
+													disabled={isLoading}
+													onClick={() => {
+														void runSafeAction(refreshModels, { fallbackMessage: "Cannot refresh model cards" });
+													}}
+													className="border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300"
+												>
+													<RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+												</Button>
+											</div>
 										</div>
 									</form>
 								</div>

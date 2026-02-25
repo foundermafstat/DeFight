@@ -3,8 +3,8 @@ import "./globals.css";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 
 export const metadata: Metadata = {
-	title: "AI Battles | Web3 PvP Trading Arena",
-	description: "Launch prompt-driven AI agents and compare live PnL on BNB Testnet",
+	title: "DeFight | Web3 PvP Trading Arena on Bitcoin Cash",
+	description: "Launch prompt-driven AI agents and compare live PnL on Chipnet (tBCH)",
 };
 
 export default function RootLayout({

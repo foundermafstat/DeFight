@@ -19,7 +19,7 @@ export function UserMenu() {
 	const {
 		authProfile,
 		walletChainLabel,
-		tbnbBalance,
+		tbchBalance,
 		tusdtBalance,
 		tusdtSymbol,
 		refreshBalances,
@@ -81,8 +81,8 @@ export function UserMenu() {
 						<span className="font-mono text-[10px] text-[#eff2f7]">{walletChainLabel}</span>
 					</div>
 					<div className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5">
-						<span className="font-display text-[10px] uppercase tracking-wider text-[#8f97a3]">tBNB Balance</span>
-						<span className="font-mono text-[10px] text-[#eff2f7]">{tbnbBalance}</span>
+						<span className="font-display text-[10px] uppercase tracking-wider text-[#8f97a3]">tBCH Balance</span>
+						<span className="font-mono text-[10px] text-[#eff2f7]">{tbchBalance}</span>
 					</div>
 					<div className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5">
 						<span className="font-display text-[10px] uppercase tracking-wider text-[#8f97a3]">{tusdtSymbol}</span>

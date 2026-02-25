@@ -2,7 +2,7 @@
   "name": "defight",
   "version": "0.1.0",
   "private": true,
-  "description": "AI Battles MVP monorepo: Web dashboard, execution engine, game server, and BNB Testnet contracts",
+  "description": "AI Battles MVP monorepo: Web dashboard, execution engine, game server, and BCH Chipnet contracts",
   "workspaces": [
     "packages/*",
     "apps/*"

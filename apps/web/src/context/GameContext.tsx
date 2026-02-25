@@ -100,36 +100,36 @@ const SCORE_SCALE = Number(process.env.NEXT_PUBLIC_SCORE_SCALE || 100);
 
 const AUTH_TOKEN_STORAGE_KEY = "awb_auth_token";
 
-export const MARKET_MAVERICK_PROMPT = `You are "Simple Swapper" — a debug agent designed to generate constant transaction volume on BSC Testnet (BNB/USDT).
+export const MARKET_MAVERICK_PROMPT = `You are "Simple Swapper" — a debug agent designed to generate constant transaction volume on Chipnet (BCH/USDT).
 
 Your goal: Continuous 12% rebalancing swaps.
 
 You receive:
   • market (price)
-  • portfolio (baseBalance: BNB, quoteBalance: USDT)
+  • portfolio (baseBalance: BCH, quoteBalance: USDT)
 
 STRATEGY:
 1. CALCULATE VALUES:
-   - BNB_VAL = baseBalance * market.price
+   - BCH_VAL = baseBalance * market.price
    - USDT_VAL = quoteBalance
 
 2. DECISION:
-   - IF USDT_VAL > BNB_VAL (holding more USDT):
-     - ACTION: BUY BNB (using 12% of USDT).
-     - REASON: "Rebalance: Buying 12% (USDT > BNB)."
+   - IF USDT_VAL > BCH_VAL (holding more USDT):
+     - ACTION: BUY BCH (using 12% of USDT).
+     - REASON: "Rebalance: Buying 12% (USDT > BCH)."
    
-   - IF BNB_VAL >= USDT_VAL (holding more BNB):
-     - ACTION: SELL 12% of BNB.
-     - REASON: "Rebalance: Selling 12% (BNB >= USDT)."
+   - IF BCH_VAL >= USDT_VAL (holding more BCH):
+     - ACTION: SELL 12% of BCH.
+     - REASON: "Rebalance: Selling 12% (BCH >= USDT)."
 
 3. FALLBACK:
    - If only USDT exists -> BUY 12%.
-   - If only BNB exists -> SELL 12%.
+   - If only BCH exists -> SELL 12%.
 
 ABSOLUTE RULES:
 - Always trade 12% of the available balance.
 - Force trade every cycle.
-- Output raw JSON: {"action":"BUY|SELL|HOLD","asset":"BNB","amount_pct":12,"reason":"..."}`;
+- Output raw JSON: {"action":"BUY|SELL|HOLD","asset":"BCH","amount_pct":12,"reason":"..."}`;
 
 
 
@@ -196,8 +196,8 @@ function analyzePrompt(prompt: string): PromptAnalysis {
 	const checks = [
 		{ label: "Has clear entry rule", passed: lowered.includes("entry") || lowered.includes("buy") },
 		{ label: "Has clear exit rule", passed: lowered.includes("exit") || lowered.includes("sell") },
-		{ label: "Has stop-loss logic", passed: lowered.includes("stop-loss") || lowered.includes("cut losses") },
-		{ label: "Specifies pair BNB/USDT", passed: lowered.includes("bnb/usdt") || lowered.includes("bnbusdt") },
+		{ label: "Has clear stop-loss logic", passed: lowered.includes("stop-loss") || lowered.includes("cut losses") },
+		{ label: "Specifies pair BCH/USDT", passed: lowered.includes("bch/usdt") || lowered.includes("bchusdt") },
 		{ label: "Contains risk constraints", passed: lowered.includes("risk") || lowered.includes("cautious") },
 		{ label: "Requests explainable reasoning", passed: lowered.includes("reason") || lowered.includes("report") },
 	];
@@ -249,7 +249,7 @@ interface GameContextType {
 	authProfile: AuthProfile | null;
 	walletAddress: string;
 	walletChainLabel: string;
-	tbnbBalance: string;
+	tbchBalance: string;
 	tusdtBalance: string;
 	tusdtSymbol: string;
 	connectWalletAndAuthenticate: (address: string) => Promise<void>;
@@ -317,7 +317,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 	const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
 	const [walletAddress, setWalletAddress] = useState<string>("");
 	const [walletChainLabel, setWalletChainLabel] = useState("Disconnected");
-	const [tbnbBalance, setTbnbBalance] = useState("0.0000");
+	const [tbchBalance, setTbchBalance] = useState("0.0000");
 	const [tusdtBalance, setTusdtBalance] = useState("-");
 	const [tusdtSymbol, setTusdtSymbol] = useState("tUSDT");
 
@@ -410,7 +410,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		setAuthProfile(null);
 		setWalletAddress("");
 		setWalletChainLabel("Disconnected");
-		setTbnbBalance("0.0000");
+		setTbchBalance("0.0000");
 		setTusdtBalance("-");
 		localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 	};
@@ -463,7 +463,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		}
 
 		setWalletChainLabel("BCH Chipnet");
-		setTbnbBalance("0.0000");
+		setTbchBalance("0.0000");
 		setTusdtSymbol("tUSDT");
 		setTusdtBalance("0.00");
 	};
@@ -677,7 +677,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 				strategy,
 				cycles,
 				intervalMs: 1000,
-				symbol: "BNBUSDT",
+				symbol: "BCHUSDT",
 			}),
 		});
 
@@ -717,7 +717,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 
 		const data = await response.json();
 		const roi = Number(data.roiPct ?? 0);
-		// Backend-verified final PnL in USDT (after liquidation + BNB delta calculation)
+		// Backend-verified final PnL in USDT (after liquidation + BCH delta calculation)
 		const verifiedPnl = Number(data.finalPnl ?? 0);
 
 		// Sanity-check: if ROI is negative, PnL MUST be negative too.
@@ -794,7 +794,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 				},
 				durationSec: 900,
 				tickSec: 5,
-				symbol: "BNBUSDT",
+				symbol: "BCHUSDT",
 			}),
 		});
 
@@ -979,7 +979,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		authProfile,
 		walletAddress,
 		walletChainLabel,
-		tbnbBalance,
+		tbchBalance,
 		tusdtBalance,
 		tusdtSymbol,
 		connectWalletAndAuthenticate,

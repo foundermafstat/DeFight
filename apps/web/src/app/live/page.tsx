@@ -29,8 +29,7 @@ import {
 import { useGame, formatClock, formatDate, shortAddress } from "@/context/GameContext";
 import { useRouter } from "next/navigation";
 import { runSafeAction } from "@/lib/safe-action";
-
-const EXPLORER_BASE = "https://testnet.bscscan.com/tx/";
+const EXPLORER_BASE = "https://chipnet.imaginary.cash/tx/";
 
 type StopResult = {
 	finalPnl: number;
@@ -150,16 +149,13 @@ export default function LivePage() {
 												{portfolio.quoteBalance.toFixed(2)} <span className="text-neutral-500">USDT</span>
 											</p>
 											<p className="font-mono text-sm text-white">
-												{portfolio.baseBalance.toFixed(4)} <span className="text-neutral-500">BNB</span>
+												{portfolio.baseBalance.toFixed(4)} <span className="text-neutral-500">BCH</span>
 											</p>
 										</div>
 									</div>
-								</div>
 
-								<div className="rounded-lg border border-white/5 bg-white/5 p-3 flex items-center justify-between">
-									<div>
-										<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">BNB/USDT</p>
-										<p className="font-mono text-white text-sm">{marketPrice ? marketPrice.toFixed(2) : "-"}</p>
+									<div className="rounded-lg border border-white/5 bg-white/5 p-3 flex items-center justify-between">
+										<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">BCH/USDT</p>
 									</div>
 									<Activity className="h-4 w-4 text-neutral-600" />
 								</div>
@@ -246,9 +242,7 @@ export default function LivePage() {
 													<a
 														href={`${EXPLORER_BASE}${log.txHash}`}
 														target="_blank"
-														rel="noopener noreferrer"
-														className="shrink-0 text-[#e4bf80]/60 hover:text-[#e4bf80] transition-colors"
-														title="View transaction on BSCScan"
+														title="View transaction on Chipnet Explorer"
 													>
 														<ExternalLink className="h-3 w-3" />
 													</a>
@@ -373,77 +367,79 @@ export default function LivePage() {
 						</div>
 
 					</div>
-				</section>
-			</div>
+				</section >
+			</div >
 
 			{/* Stop Result Modal */}
-			{stopResult && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-					<div className="relative w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-[#121418] p-1 shadow-2xl">
-						<div className="rounded-xl bg-neutral-900/80 p-6 backdrop-blur-md">
-							{/* Close button */}
-							<button
-								onClick={() => setStopResult(null)}
-								className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"
-							>
-								<X className="h-5 w-5" />
-							</button>
+			{
+				stopResult && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+						<div className="relative w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-[#121418] p-1 shadow-2xl">
+							<div className="rounded-xl bg-neutral-900/80 p-6 backdrop-blur-md">
+								{/* Close button */}
+								<button
+									onClick={() => setStopResult(null)}
+									className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"
+								>
+									<X className="h-5 w-5" />
+								</button>
 
-							{/* Header */}
-							<div className="flex items-center gap-3 mb-6">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e4bf80]/10 text-[#e4bf80]">
-									<Trophy className="h-5 w-5" />
-								</div>
-								<div>
-									<h2 className="font-display text-lg font-bold text-white uppercase tracking-wide">Trading Complete</h2>
-									<p className="text-xs text-neutral-400">{agentName}</p>
-								</div>
-							</div>
-
-							{/* Stats */}
-							<div className="space-y-3 mb-6">
-								<div className="rounded-lg border border-white/5 bg-white/5 p-4 flex items-center justify-between">
-									<span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Final PnL</span>
-									<span className={`font-mono text-xl font-bold ${stopResult.finalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-										{stopResult.finalPnl >= 0 ? '+' : ''}{stopResult.finalPnl.toFixed(4)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
-									</span>
-								</div>
-
-								<div className="rounded-lg border border-white/5 bg-white/5 p-4 flex items-center justify-between">
-									<span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">ROI</span>
-									<span className={`font-mono text-xl font-bold ${stopResult.roiPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-										{stopResult.roiPct >= 0 ? '+' : ''}{stopResult.roiPct.toFixed(2)}%
-									</span>
-								</div>
-
-								{stopResult.txHash && (
-									<div className="rounded-lg border border-white/5 bg-white/5 p-4">
-										<p className="text-xs uppercase tracking-wider text-neutral-500 font-bold mb-2">Refund Transaction</p>
-										<a
-											href={`${EXPLORER_BASE}${stopResult.txHash}`}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="flex items-center gap-2 text-[#e4bf80] hover:text-[#f0d49a] transition-colors font-mono text-xs"
-										>
-											{stopResult.txHash.slice(0, 10)}...{stopResult.txHash.slice(-8)}
-											<ExternalLink className="h-3 w-3" />
-										</a>
+								{/* Header */}
+								<div className="flex items-center gap-3 mb-6">
+									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e4bf80]/10 text-[#e4bf80]">
+										<Trophy className="h-5 w-5" />
 									</div>
-								)}
-							</div>
+									<div>
+										<h2 className="font-display text-lg font-bold text-white uppercase tracking-wide">Trading Complete</h2>
+										<p className="text-xs text-neutral-400">{agentName}</p>
+									</div>
+								</div>
 
-							{/* Close button */}
-							<Button
-								type="button"
-								className="w-full bg-white/10 hover:bg-white/20 text-white uppercase tracking-wider text-xs h-9"
-								onClick={() => setStopResult(null)}
-							>
-								Close
-							</Button>
+								{/* Stats */}
+								<div className="space-y-3 mb-6">
+									<div className="rounded-lg border border-white/5 bg-white/5 p-4 flex items-center justify-between">
+										<span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Final PnL</span>
+										<span className={`font-mono text-xl font-bold ${stopResult.finalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+											{stopResult.finalPnl >= 0 ? '+' : ''}{stopResult.finalPnl.toFixed(4)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
+										</span>
+									</div>
+
+									<div className="rounded-lg border border-white/5 bg-white/5 p-4 flex items-center justify-between">
+										<span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">ROI</span>
+										<span className={`font-mono text-xl font-bold ${stopResult.roiPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+											{stopResult.roiPct >= 0 ? '+' : ''}{stopResult.roiPct.toFixed(2)}%
+										</span>
+									</div>
+
+									{stopResult.txHash && (
+										<div className="rounded-lg border border-white/5 bg-white/5 p-4">
+											<p className="text-xs uppercase tracking-wider text-neutral-500 font-bold mb-2">Refund Transaction</p>
+											<a
+												href={`${EXPLORER_BASE}${stopResult.txHash}`}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="flex items-center gap-2 text-[#e4bf80] hover:text-[#f0d49a] transition-colors font-mono text-xs"
+											>
+												{stopResult.txHash.slice(0, 10)}...{stopResult.txHash.slice(-8)}
+												<ExternalLink className="h-3 w-3" />
+											</a>
+										</div>
+									)}
+								</div>
+
+								{/* Close button */}
+								<Button
+									type="button"
+									className="w-full bg-white/10 hover:bg-white/20 text-white uppercase tracking-wider text-xs h-9"
+									onClick={() => setStopResult(null)}
+								>
+									Close
+								</Button>
+							</div>
 						</div>
 					</div>
-				</div>
-			)}
-		</main>
+				)
+			}
+		</main >
 	);
 }

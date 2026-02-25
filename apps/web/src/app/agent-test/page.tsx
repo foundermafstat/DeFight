@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AgentTestPage() {
 	const [strategy, setStrategy] = useState("You are a momentum trader. Buy when price is up > 0.5%, Sell when down < -0.5%. Otherwise Hold.");
-	const [symbol, setSymbol] = useState("BNBUSDT");
+	const [symbol, setSymbol] = useState("BCHUSDT");
 	const [price, setPrice] = useState("600");
 	const [priceChange, setPriceChange] = useState("1.2");
 	const [quoteBal, setQuoteBal] = useState("1000");

@@ -29,12 +29,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const TRADING_PAIRS = [
-	{ symbol: "BNBUSDT", name: "BNB / USDT" },
+	{ symbol: "BCHUSDT", name: "BCH / USDT" },
 	{ symbol: "BTCUSDT", name: "BTC / USDT" },
 	{ symbol: "ETHUSDT", name: "ETH / USDT" },
 	{ symbol: "SOLUSDT", name: "SOL / USDT" },
 	// Reverse Pairs
-	{ symbol: "USDTBNB", name: "USDT / BNB" },
+	{ symbol: "USDTBCH", name: "USDT / BCH" },
 	{ symbol: "USDTBTC", name: "USDT / BTC" },
 	{ symbol: "USDTETH", name: "USDT / ETH" },
 	{ symbol: "USDTSOL", name: "USDT / SOL" },
@@ -292,7 +292,7 @@ export default function ForgePage() {
 
 										<div className="space-y-2">
 											<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
-												<Wallet className="h-3 w-3" /> Deposit (BNB)
+												<Wallet className="h-3 w-3" /> Deposit (BCH)
 											</label>
 											<div className="relative">
 												<Input
@@ -305,7 +305,7 @@ export default function ForgePage() {
 													onChange={(e) => setDepositAmount(e.target.value)}
 												/>
 												<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 font-mono">
-													BNB
+													BCH
 												</span>
 											</div>
 										</div>
@@ -318,7 +318,7 @@ export default function ForgePage() {
 												className="border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10 hover:text-white h-11 uppercase tracking-wider text-xs font-bold px-6"
 											>
 												<Sparkles className="mr-2 h-3.5 w-3.5" />
-												Analyze 
+												Analyze
 											</Button>
 											<Button
 												type="button"

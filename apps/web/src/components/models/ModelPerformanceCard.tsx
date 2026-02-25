@@ -21,14 +21,14 @@ type ModelPerformanceCardProps = {
 function formatPair(symbol: string): string {
 	const clean = symbol.trim().toUpperCase();
 	if (!clean) {
-		return "BNB/USDT";
+		return "BCH/USDT";
 	}
 
 	if (clean.includes("/")) {
 		return clean;
 	}
 
-	const knownQuotes = ["USDT", "USDC", "BUSD", "BTC", "ETH", "BNB"];
+	const knownQuotes = ["USDT", "USDC", "BUSD", "BTC", "ETH", "BCH"];
 	const quote = knownQuotes.find((candidate) => clean.endsWith(candidate) && clean.length > candidate.length);
 	if (!quote) {
 		return clean;

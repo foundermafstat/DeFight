@@ -12,8 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useOnChainLeaderboard } from "@/hooks/useOnChainLeaderboard";
 import { ExternalLink, RefreshCw, Trophy, TrendingUp, TrendingDown, Clock } from "lucide-react";
-
-const EXPLORER_BASE = "https://testnet.bscscan.com/address/";
+const EXPLORER_BASE = "https://chipnet.imaginary.cash/address/";
 
 function shortAddress(addr: string): string {
 	if (!addr || addr.length < 10) return addr;
@@ -90,9 +89,7 @@ export function LeaderboardSection() {
 					</h2>
 				</div>
 				<div className="flex items-center gap-2">
-					<div className="h-px w-12 bg-gradient-to-r from-transparent to-[#e4bf80]/40" />
-					<p className="text-xs text-neutral-500 uppercase tracking-widest">Live on BNB Smart Chain Testnet</p>
-					<div className="h-px w-12 bg-gradient-to-l from-transparent to-[#e4bf80]/40" />
+					<p className="text-xs text-neutral-500 uppercase tracking-widest">Live on Chipnet (Bitcoin Cash)</p>
 				</div>
 			</div>
 
@@ -138,7 +135,7 @@ export function LeaderboardSection() {
 								Owner
 							</TableHead>
 							<TableHead className="text-right text-[10px] font-bold uppercase tracking-wider text-neutral-500">
-								PnL (tBNB)
+								PnL (tBCH)
 							</TableHead>
 							<TableHead className="hidden sm:table-cell text-right text-[10px] font-bold uppercase tracking-wider text-neutral-500">
 								ROI
@@ -283,9 +280,8 @@ export function LeaderboardSection() {
 					<div className="flex items-center justify-center gap-2 border-t border-white/5 py-3">
 						<div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
 						<span className="text-[10px] text-neutral-600 uppercase tracking-widest font-mono">
-							Contract:{" "}
 							<a
-								href={`https://testnet.bscscan.com/address/${process.env.NEXT_PUBLIC_LEADERBOARD_ADDRESS}`}
+								href={`https://chipnet.imaginary.cash/address/${process.env.NEXT_PUBLIC_LEADERBOARD_ADDRESS}`}
 								target="_blank"
 								rel="noopener noreferrer"
 								className="hover:text-[#e4bf80] transition-colors"
@@ -296,6 +292,6 @@ export function LeaderboardSection() {
 					</div>
 				)}
 			</div>
-		</section>
+		</section >
 	);
 }

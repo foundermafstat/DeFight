@@ -51,10 +51,10 @@ export function Header() {
 			<div className="mx-auto flex max-w-[1700px] items-center justify-between px-4 md:px-8">
 				<Link href="/" className="group flex flex-col gap-0 shrink-0">
 					<span className="font-display text-xl font-extrabold tracking-wide text-white transition-all duration-300 md:text-2xl">
-						DEFAI <span className="text-[#e4bf80] font-bold">BATTLES</span>
+						DE<span className="text-[#0AC18E] font-bold">FIGHT</span>
 					</span>
-					<span className="font-mono hidden text-[10px] uppercase tracking-[0.16em] text-[#8f97a3]/60 md:block">
-						DefAI TRADING ARENA
+					<span className="font-mono hidden text-[10px] uppercase text-[#8f97a3]/60 md:block">
+						TRADING ARENA
 					</span>
 				</Link>
 
@@ -88,7 +88,7 @@ export function Header() {
 							type="button"
 							className="group relative h-9 md:h-10 overflow-hidden rounded-xl border border-white/10 bg-[#1c2128] px-4 md:px-6 font-display text-[10px] md:text-xs font-bold uppercase tracking-[0.16em] text-white transition-all duration-300 hover:border-[#e4bf80]/50 hover:bg-[#242a33] hover:shadow-[0_0_20px_rgba(228,191,128,0.15)]"
 							onClick={() => {
-								void runSafeAction(connectWalletAndAuthenticate);
+								void runSafeAction(() => connectWalletAndAuthenticate(""));
 							}}
 						>
 							<div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-1000 group-hover:translate-x-[100%]" />
