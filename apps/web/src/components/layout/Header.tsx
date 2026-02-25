@@ -21,6 +21,7 @@ export function Header() {
 		{ label: "Model Studio", href: "/models" },
 		{ label: "Live Trading Session", href: "/live" },
 		{ label: "AI Arena", href: "/arena" },
+		{ label: "Marketplace", href: "/marketplace" },
 	];
 
 	const isActive = (href: string) => {

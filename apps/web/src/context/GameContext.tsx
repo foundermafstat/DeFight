@@ -946,17 +946,27 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		// MetaMask account listeners removed
 	}, [authProfile]);
 
+	const activeRunIdRef = useRef(activeRunId);
+	useEffect(() => { activeRunIdRef.current = activeRunId; }, [activeRunId]);
+
+	const duelLeftRef = useRef(duelLeft);
+	useEffect(() => { duelLeftRef.current = duelLeft; }, [duelLeft]);
+
+	const duelRightRef = useRef(duelRight);
+	useEffect(() => { duelRightRef.current = duelRight; }, [duelRight]);
+
 	useEffect(() => {
 		const socket = io(API_URL, {
 			transports: ["websocket"],
 		});
 
 		socket.on("server:ready", (payload) => {
-			if (!activeRunId) return;
+			const currentRunId = activeRunIdRef.current;
+			if (!currentRunId) return;
 			setSessions((prev) => {
 				const temp = { ...prev };
-				if (temp[activeRunId]) {
-					temp[activeRunId].soloLogs = [{ timestamp: Date.now(), message: payload.message }, ...temp[activeRunId].soloLogs].slice(0, 200);
+				if (temp[currentRunId]) {
+					temp[currentRunId].soloLogs = [{ timestamp: Date.now(), message: payload.message }, ...temp[currentRunId].soloLogs].slice(0, 200);
 				}
 				return temp;
 			});
@@ -1009,13 +1019,13 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 
 			if (payload.source === "tournament") {
 				const normalized = String(payload.playerAddress || "").toLowerCase();
-				if (duelLeft && normalized === duelLeft.playerAddress) {
+				if (duelLeftRef.current && normalized === duelLeftRef.current.playerAddress) {
 					setArenaLeftLogs((prev) => [{ timestamp: Date.now(), message, txHash }, ...prev].slice(0, 120));
 					setArenaLeftSeries((prev) => [
 						...prev.slice(-180),
 						{ time: formatClock(Date.now()), pnl: Number(payload.pnl ?? 0) },
 					]);
-				} else if (duelRight && normalized === duelRight.playerAddress) {
+				} else if (duelRightRef.current && normalized === duelRightRef.current.playerAddress) {
 					setArenaRightLogs((prev) => [{ timestamp: Date.now(), message, txHash }, ...prev].slice(0, 120));
 					setArenaRightSeries((prev) => [
 						...prev.slice(-180),
@@ -1054,7 +1064,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		return () => {
 			socket.disconnect();
 		};
-	}, [duelLeft, duelRight, sessions]);
+	}, []);
 
 
 	const pushTerminalLog = (message: string) => {

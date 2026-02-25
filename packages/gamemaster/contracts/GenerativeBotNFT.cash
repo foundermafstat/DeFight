@@ -1,0 +1,76 @@
+pragma cashscript ^0.10.0;
+
+// The contract serves as a global registry and marketplace for non-transferable (Soulbound) AI bots.
+// In the BCH network, tokens are usually freely transferable, but this smart contract (Covenant) 
+// "locks" the NFT bots inside itself. Tokens never leave this address.
+// 
+// Ownership and trading are implemented entirely through mutating the NFT state (mutable token commitment).
+// This is a perfect analog to "SBT-tokens" with the ability to safely trade within the platform.
+contract GenerativeBotNFT(bytes32 botCategory) {
+    
+    // tokenCommitment structure (exactly 40 bytes):
+    // [0..20] - bytes20 ownerPkh (Public key hash of the current owner)
+    // [20..28] - bytes8 priceBytes (Price in satoshis for the marketplace, 0 if not for sale)
+    // [28..40] - bytes12 botHash (Hexadecimal identifier of the bot, e.g., part of the Filebase CID)
+
+    // 1. Using the bot, updating it, or listing it for sale
+    function updateState(pubkey ownerPk, sig ownerSig, int newPrice, bytes12 newBotHash) {
+        // Read the current state from the active input's commitment (tx.inputs[0])
+        bytes commitment = tx.inputs[this.activeInputIndex].nftCommitment;
+        
+        // Split the 40-byte commitment into parts
+        bytes ownerBytes, bytes remainder = commitment.split(20);
+        bytes20 ownerPkh = bytes20(ownerBytes);
+
+        // Ensure the transaction is signed by the legitimate current owner
+        require(hash160(ownerPk) == ownerPkh);
+        require(checkSig(ownerSig, ownerPk));
+
+        // MAIN RULE: Ensure the token remains in this exact smart contract!
+        // It is impossible to withdraw it to a standard wallet = Non-transferable token.
+        require(tx.outputs[this.activeInputIndex].lockingBytecode == tx.inputs[this.activeInputIndex].lockingBytecode);
+        
+        // The token category must not change
+        require(tx.outputs[this.activeInputIndex].tokenCategory == botCategory);
+
+        // Form the new commitment with the new price (for the Marketplace) and hash
+        bytes8 newPriceBytes = bytes8(newPrice);
+        bytes newCommitment = ownerBytes + newPriceBytes + newBotHash;
+
+        require(tx.outputs[this.activeInputIndex].nftCommitment == newCommitment);
+    }
+
+    // 2. Built-in Marketplace: Buying the bot by another user
+    function buy(pubkey newOwnerPk, int currentPriceLimit) {
+        bytes commitment = tx.inputs[this.activeInputIndex].nftCommitment;
+        
+        // Unpack the old owner
+        bytes ownerBytes, bytes remainder = commitment.split(20);
+        bytes20 oldOwnerPkh = bytes20(ownerBytes);
+
+        // Unpack the price and properties
+        bytes priceBytes, bytes botHashBytes = remainder.split(8);
+        int price = int(priceBytes);
+        bytes12 botHash = bytes12(botHashBytes);
+
+        // The bot must be listed for sale (price > 0)
+        require(price > 0);
+        
+        // Buyer protection: price must not exceed their limit (Slippage protection)
+        require(price <= currentPriceLimit);
+
+        // PAYMENT TO SELLER: 1st transaction output must strictly transfer BCH to the old owner
+        require(tx.outputs[1].value >= price);
+        require(tx.outputs[1].lockingBytecode == new LockingBytecodeP2PKH(oldOwnerPkh));
+
+        // The token remains in this registry, but changes owner
+        require(tx.outputs[this.activeInputIndex].lockingBytecode == tx.inputs[this.activeInputIndex].lockingBytecode);
+        require(tx.outputs[this.activeInputIndex].tokenCategory == botCategory);
+
+        // Form the new state: the bot is transferred to the new owner and unlisted (price = 0)
+        bytes20 newOwnerPkh = hash160(newOwnerPk);
+        bytes newCommitment = newOwnerPkh + bytes8(0) + botHash;
+
+        require(tx.outputs[this.activeInputIndex].nftCommitment == newCommitment);
+    }
+}

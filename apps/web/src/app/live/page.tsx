@@ -80,7 +80,7 @@ export default function LivePage() {
 	};
 
 	return (
-		<main className="relative h-screen w-full flex flex-col pt-[64px] overflow-hidden">
+		<div className="relative h-[calc(100hdv-58px)] md:h-[calc(100dvh-62px)] w-full flex flex-col overflow-hidden">
 			{/* Ambient Background Effects */}
 			<div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-neutral-950 to-neutral-950" />
 			<div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
@@ -88,8 +88,8 @@ export default function LivePage() {
 
 			<LiveTicker />
 
-			<div className="flex-1 overflow-y-auto no-scrollbar flex flex-col min-h-0">
-				<div className="mx-auto w-full max-w-[1700px] flex flex-col gap-3 px-4 md:px-8 xl:px-10 pb-16">
+			<div className="flex-1 overflow-y-auto lg:overflow-hidden no-scrollbar flex flex-col min-h-0">
+				<div className="mx-auto w-full max-w-[1700px] flex flex-col flex-1 min-h-0 gap-3 px-4 md:px-8 xl:px-10 pb-4">
 
 					{/* Header & Session Tabs */}
 					<div className="flex flex-col gap-3 md:flex-row md:items-end justify-between shrink-0 mb-2">
@@ -133,7 +133,7 @@ export default function LivePage() {
 						</div>
 					</div>
 
-					<section className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_300px] xl:grid-cols-[280px_1fr_320px]">
+					<section className="flex-1 min-h-0 grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_300px] xl:grid-cols-[280px_1fr_320px]">
 
 						{/* Left: Agent Stats */}
 						<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#121418] p-1 flex flex-col min-h-0">
@@ -145,7 +145,7 @@ export default function LivePage() {
 									<h3 className="font-display text-sm font-medium text-white uppercase tracking-wide">Active Agent</h3>
 								</div>
 
-								<div className="space-y-2 overflow-auto flex-1 min-h-0">
+								<div className="space-y-2 overflow-auto no-scrollbar flex-1 min-h-0">
 									<div className="rounded-lg border border-white/5 bg-white/5 p-3">
 										<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">Designation</p>
 										<p className="text-white font-medium truncate text-sm" title={agentName}>{agentName || "No Agent Active"}</p>
@@ -245,7 +245,7 @@ export default function LivePage() {
 						</div>
 
 						{/* Middle: Terminal Console */}
-						<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] p-1 flex flex-col min-h-[600px]">
+						<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] p-1 flex flex-col min-h-[500px] lg:min-h-0 h-full">
 							<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#0AC18E]/30 to-transparent" />
 							<div className="relative flex-1 bg-black/40 p-3 font-mono text-xs flex flex-col min-h-0">
 								<div className="mb-3 flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
@@ -369,7 +369,7 @@ export default function LivePage() {
 										<div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
 									</div>
 
-									<div className="flex-1 overflow-auto min-h-0">
+									<div className="flex-1 overflow-auto no-scrollbar min-h-0">
 										<Table>
 											<TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
 												<TableRow className="border-white/5 hover:bg-transparent">
@@ -483,6 +483,6 @@ export default function LivePage() {
 					</div>
 				)
 			}
-		</main >
+		</div>
 	);
 }
