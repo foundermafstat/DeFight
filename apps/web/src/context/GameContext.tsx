@@ -24,6 +24,20 @@ export type LiveLog = {
 	txHash?: string;
 };
 
+export type ActiveSession = {
+	runId: string;
+	agentName: string;
+	symbol: string;
+	isActive: boolean;
+	soloLogs: LiveLog[];
+	liveSeries: Array<{ time: string; pnl: number }>;
+	portfolio: { quoteBalance: number; baseBalance: number; pnl: number };
+	finalPnl: number | null;
+	finalRoiPct: number | null;
+	marketPrice: number | null;
+	agentStartedAt: string | null;
+};
+
 export type PromptAnalysis = {
 	score: number;
 	summary: string;
@@ -270,22 +284,24 @@ interface GameContextType {
 	listFeaturedModels: () => Promise<SavedPromptModel[]>;
 	savePromptModel: (input: SavePromptModelInput) => Promise<SavedPromptModel>;
 	listModelRuns: (modelId: string, limit?: number) => Promise<SavedPromptModelRun[]>;
-	stopAgent: () => Promise<{ txHash: string; finalPnl: number; roiPct: number; }>;
+	stopAgent: (targetRunId?: string) => Promise<{ txHash: string; finalPnl: number; roiPct: number; }>;
 	pushTerminalLog: (message: string) => void;
-	agentStopped: boolean;
 
-	// Data
+	// Multi-Agent New State
+	sessions: Record<string, ActiveSession>;
+	activeRunId: string | null;
+	setActiveRunId: (runId: string | null) => void;
+
+	// Legacy Data (Derived from activeRunId)
 	leaderboard: LeaderboardRow[];
 	runId: string | null;
 	soloLogs: LiveLog[];
 	portfolio: { quoteBalance: number; baseBalance: number; pnl: number; };
 	marketPrice: number | null;
-	/** Final verified PnL (USDT) returned by backend after session stop. null = session not ended yet. */
 	finalPnl: number | null;
-	/** Final verified ROI (%) returned by backend after session stop. null = session not ended yet. */
 	finalRoiPct: number | null;
-
 	liveSeries: Array<{ time: string; pnl: number; }>;
+	agentStopped: boolean;
 
 	// Arena
 	leftAgentKey: string;
@@ -329,19 +345,25 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 	const [tusdtBalance, setTusdtBalance] = useState("-");
 	const [tusdtSymbol, setTusdtSymbol] = useState("tUSDT");
 
-	const [runId, setRunId] = useState<string | null>(null);
 	const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
-	const [soloLogs, setSoloLogs] = useState<LiveLog[]>([]);
-	const [agentStopped, setAgentStopped] = useState(false);
-	const agentStoppedRef = useRef(false);
 	const [lastRoiPct, setLastRoiPct] = useState<number>(0);
-	const [agentStartedAt, setAgentStartedAt] = useState<string | null>(null);
-	const [portfolio, setPortfolio] = useState({ quoteBalance: 1000, baseBalance: 0, pnl: 0 });
-	const [marketPrice, setMarketPrice] = useState<number | null>(null);
-	const [liveSeries, setLiveSeries] = useState<Array<{ time: string; pnl: number; }>>([]);
-	/** Verified final values returned by the backend upon stop — use ONLY these for commit */
-	const [finalPnl, setFinalPnl] = useState<number | null>(null);
-	const [finalRoiPct, setFinalRoiPct] = useState<number | null>(null);;
+
+	// Context for Multi-Session
+	const [sessions, setSessions] = useState<Record<string, ActiveSession>>({});
+	const [activeRunId, setActiveRunId] = useState<string | null>(null);
+
+	// Derived states based on activeRunId
+	const activeSession = activeRunId ? sessions[activeRunId] : null;
+
+	const runId = activeSession?.runId || null;
+	const soloLogs = activeSession?.soloLogs || [];
+	const agentStopped = activeSession ? !activeSession.isActive : false;
+	const portfolio = activeSession?.portfolio || { quoteBalance: 1000, baseBalance: 0, pnl: 0 };
+	const marketPrice = activeSession?.marketPrice || null;
+	const liveSeries = activeSession?.liveSeries || [];
+	const finalPnl = activeSession?.finalPnl ?? null;
+	const finalRoiPct = activeSession?.finalRoiPct ?? null;
+	const agentNameContext = activeSession?.agentName || agentName;
 
 	const [leftAgentKey, setLeftAgentKey] = useState("custom");
 	const [rightAgentKey, setRightAgentKey] = useState("aggrobot");
@@ -718,23 +740,38 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		}
 
 		const data = await response.json();
-		setRunId(data.runId);
-		setSoloLogs([]);
-		setLiveSeries([]);
-		setAgentStopped(false);
-		agentStoppedRef.current = false;
-		setLastRoiPct(0);
-		// Reset verified final values — new session starting
-		setFinalPnl(null);
-		setFinalRoiPct(null);
-		setAgentStartedAt(new Date().toISOString());
-		// Note: Tab switching is handled by router now, we just update state
+		const newRunId = data.runId as string;
+
+		setSessions(prev => ({
+			...prev,
+			[newRunId]: {
+				runId: newRunId,
+				agentName,
+				symbol: "BCHUSDT",
+				isActive: true,
+				soloLogs: [],
+				liveSeries: [],
+				portfolio: { quoteBalance: 100, baseBalance: 0, pnl: 0 },
+				finalPnl: null,
+				finalRoiPct: null,
+				marketPrice: null,
+				agentStartedAt: new Date().toISOString()
+			}
+		}));
+
+		if (!activeRunId) {
+			setActiveRunId(newRunId);
+		}
+
 		setStatus(`Live session started (${agentName})`);
 
 	};
 
-	const stopAgent = async (): Promise<{ txHash: string; finalPnl: number; roiPct: number; }> => {
+	const stopAgent = async (targetRunId?: string): Promise<{ txHash: string; finalPnl: number; roiPct: number; }> => {
 		if (!isAuthenticated) throw new Error("Wallet not connected");
+
+		const idToStop = targetRunId || activeRunId;
+		if (!idToStop) throw new Error("No agent selected");
 
 		setStatus("Stopping agent...");
 		const response = await authFetch("/agents/stop", {
@@ -758,16 +795,25 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 
 		const pnlStr = ` PnL: ${sanitizedPnl.toFixed(4)} USDT (${roi.toFixed(2)}%)`;
 		setStatus("Agent stopped. Refund initiated.");
-		setAgentStopped(true);
-		agentStoppedRef.current = true;
 		setLastRoiPct(roi);
-		// Store verified final values — these are the ONLY correct numbers for commit
-		setFinalPnl(sanitizedPnl);
-		setFinalRoiPct(roi);
-		setSoloLogs((prev) => [
-			{ timestamp: Date.now(), message: `━━━ Trading session ended ━━━ Final${pnlStr}` },
-			...prev,
-		]);
+
+		setSessions(prev => {
+			const temp = { ...prev };
+			if (temp[idToStop]) {
+				temp[idToStop] = {
+					...temp[idToStop],
+					isActive: false,
+					finalPnl: sanitizedPnl,
+					finalRoiPct: roi,
+					soloLogs: [
+						{ timestamp: Date.now(), message: `━━━ Trading session ended ━━━ Final${pnlStr}` },
+						...temp[idToStop].soloLogs
+					]
+				};
+			}
+			return temp;
+		});
+
 		pushToast(`Refund initiated! Final${pnlStr}`, "success");
 		return { txHash: data.txHash, finalPnl: sanitizedPnl, roiPct: roi };
 	};
@@ -906,11 +952,17 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		});
 
 		socket.on("server:ready", (payload) => {
-			setSoloLogs((prev) => [{ timestamp: Date.now(), message: payload.message }, ...prev].slice(0, 200));
+			if (!activeRunId) return;
+			setSessions((prev) => {
+				const temp = { ...prev };
+				if (temp[activeRunId]) {
+					temp[activeRunId].soloLogs = [{ timestamp: Date.now(), message: payload.message }, ...temp[activeRunId].soloLogs].slice(0, 200);
+				}
+				return temp;
+			});
 		});
 
 		socket.on("run:started", (payload) => {
-			setRunId(payload.runId);
 			setStatus(`Run ${payload.runId.slice(0, 8)} started`);
 		});
 
@@ -973,29 +1025,47 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 				return;
 			}
 
-			// Don't add new logs if agent was stopped
-			if (agentStoppedRef.current) return;
-			setSoloLogs((prev) => [{ timestamp: Date.now(), message, txHash }, ...prev].slice(0, 200));
-			setPortfolio({
-				quoteBalance: Number(payload.portfolio?.quoteBalance ?? 0),
-				baseBalance: Number(payload.portfolio?.baseBalance ?? 0),
-				pnl: Number(payload.pnl ?? 0),
-			});
-			setMarketPrice(Number(payload.market?.price ?? 0));
-			setLiveSeries((prev) => [
-				...prev.slice(-180),
-				{ time: formatClock(Date.now()), pnl: Number(payload.pnl ?? 0) },
-			]);
+			// Multi-Agent Solo Logging
+			if (payload.runId) {
+				setSessions(prev => {
+					const temp = { ...prev };
+					const session = temp[payload.runId];
+					if (session && session.isActive) {
+						temp[payload.runId] = {
+							...session,
+							portfolio: {
+								quoteBalance: Number(payload.portfolio?.quoteBalance ?? 0),
+								baseBalance: Number(payload.portfolio?.baseBalance ?? 0),
+								pnl: Number(payload.pnl ?? 0),
+							},
+							marketPrice: Number(payload.market?.price ?? 0),
+							soloLogs: [{ timestamp: Date.now(), message, txHash }, ...session.soloLogs].slice(0, 200),
+							liveSeries: [
+								...session.liveSeries.slice(-180),
+								{ time: formatClock(Date.now()), pnl: Number(payload.pnl ?? 0) },
+							]
+						};
+					}
+					return temp;
+				});
+			}
 		});
 
 		return () => {
 			socket.disconnect();
 		};
-	}, [duelLeft, duelRight]);
+	}, [duelLeft, duelRight, sessions]);
 
 
 	const pushTerminalLog = (message: string) => {
-		setSoloLogs((prev) => [{ timestamp: Date.now(), message }, ...prev].slice(0, 200));
+		if (!activeRunId) return;
+		setSessions(prev => {
+			const temp = { ...prev };
+			if (temp[activeRunId]) {
+				temp[activeRunId].soloLogs = [{ timestamp: Date.now(), message }, ...temp[activeRunId].soloLogs].slice(0, 200);
+			}
+			return temp;
+		});
 	};
 
 	const value = {
@@ -1030,6 +1100,13 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		savePromptModel,
 		listModelRuns,
 		leaderboard,
+
+		// Enhanced Multiple sessions
+		sessions,
+		activeRunId,
+		setActiveRunId,
+
+		// Single session proxy
 		runId,
 		soloLogs,
 		portfolio,
