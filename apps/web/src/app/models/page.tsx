@@ -50,7 +50,7 @@ export default function ModelsPage() {
 		walletAddress,
 		agentName,
 		strategy,
-		connectWalletAndAuthenticate,
+		loginWithPaytaca,
 		listSavedModels,
 		savePromptModel,
 		listModelRuns,
@@ -202,7 +202,7 @@ export default function ModelsPage() {
 			{/* Ambient Background Effects */}
 			<div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-neutral-950 to-neutral-950" />
 			<div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-			<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#e4bf80]/20 to-transparent" />
+			<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#0AC18E]/20 to-transparent" />
 
 			<div className="mx-auto max-w-7xl px-6 lg:px-8">
 
@@ -210,7 +210,7 @@ export default function ModelsPage() {
 				<div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 					<div>
 						<h1 className="font-display text-4xl font-bold uppercase tracking-wide text-white">
-							Model <span className="text-[#e4bf80]">Studio</span>
+							Model <span className="text-[#0AC18E]">Studio</span>
 						</h1>
 						<p className="mt-2 max-w-xl text-neutral-400">
 							Create, manage, and backtest your agent strategies.
@@ -227,7 +227,7 @@ export default function ModelsPage() {
 							<div className="h-8 w-px bg-white/10 hidden md:block"></div>
 							<div className="hidden md:flex flex-col items-end">
 								<span className="text-xs uppercase tracking-wider text-neutral-500">Total Runs</span>
-								<span className="font-display text-xl text-[#e4bf80]">{totalRuns}</span>
+								<span className="font-display text-xl text-[#0AC18E]">{totalRuns}</span>
 							</div>
 						</div>
 					)}
@@ -235,7 +235,7 @@ export default function ModelsPage() {
 
 				{!isAuthenticated ? (
 					<div className="flex flex-col items-center justify-center rounded-3xl border border-white/5 bg-[#121418] p-12 text-center shadow-2xl">
-						<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e4bf80]/10 text-[#e4bf80]">
+						<div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#0AC18E]/10 text-[#0AC18E]">
 							<Wallet className="h-8 w-8" />
 						</div>
 						<h2 className="font-display text-2xl text-white">Connect Wallet to Access Studio</h2>
@@ -244,9 +244,9 @@ export default function ModelsPage() {
 						</p>
 						<Button
 							type="button"
-							className="mt-8 bg-[#e4bf80] text-black hover:bg-[#cda460] px-8"
+							className="mt-8 bg-[#0AC18E] text-black hover:bg-[#cda460] px-8"
 							onClick={() => {
-								void runSafeAction(() => connectWalletAndAuthenticate(""));
+								void runSafeAction(loginWithPaytaca);
 							}}
 						>
 							Connect Wallet
@@ -263,7 +263,7 @@ export default function ModelsPage() {
 								<div className="relative rounded-xl bg-neutral-900/50 p-6 backdrop-blur-md">
 									<div className="mb-6 flex items-center justify-between">
 										<div className="flex items-center gap-2">
-											<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e4bf80]/10 text-[#e4bf80]">
+											<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0AC18E]/10 text-[#0AC18E]">
 												<Plus className="h-4 w-4" />
 											</div>
 											<h3 className="font-display text-lg font-medium text-white uppercase tracking-wide">New Model</h3>
@@ -285,7 +285,7 @@ export default function ModelsPage() {
 												<LayoutGrid className="h-3 w-3" /> Model Name
 											</label>
 											<Input
-												className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#e4bf80]/50 h-10"
+												className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 h-10"
 												value={modelName}
 												onChange={(event) => setModelName(event.target.value)}
 												placeholder="e.g. Market Maverick"
@@ -298,7 +298,7 @@ export default function ModelsPage() {
 													<Coins className="h-3 w-3" /> Pair
 												</label>
 												<Input
-													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#e4bf80]/50 h-10 uppercase font-mono text-xs"
+													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 h-10 uppercase font-mono text-xs"
 													value={symbol}
 													onChange={(event) => setSymbol(event.target.value)}
 													placeholder="BCHUSDT"
@@ -309,7 +309,7 @@ export default function ModelsPage() {
 													<BrainCircuit className="h-3 w-3" /> LLM
 												</label>
 												<Input
-													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#e4bf80]/50 h-10 text-xs"
+													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 h-10 text-xs"
 													value={llmModel}
 													onChange={(event) => setLlmModel(event.target.value)}
 													placeholder="gpt-4.1-mini"
@@ -322,7 +322,7 @@ export default function ModelsPage() {
 												<Tags className="h-3 w-3" /> Assets Included
 											</label>
 											<Input
-												className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#e4bf80]/50 h-10 uppercase font-mono text-xs"
+												className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 h-10 uppercase font-mono text-xs"
 												value={tokensInput}
 												onChange={(event) => setTokensInput(event.target.value)}
 												placeholder="BCH, USDT"
@@ -333,7 +333,7 @@ export default function ModelsPage() {
 													<Database className="h-3 w-3" /> Strategy Prompt
 												</label>
 												<Textarea
-													className="min-h-[200px] resize-none border-white/10 bg-black/20 p-3 text-sm leading-relaxed text-neutral-200 placeholder:text-neutral-700 focus:border-[#e4bf80]/50 font-mono"
+													className="min-h-[200px] resize-none border-white/10 bg-black/20 p-3 text-sm leading-relaxed text-neutral-200 placeholder:text-neutral-700 focus:border-[#0AC18E]/50 font-mono"
 													value={prompt}
 													onChange={(event) => setPrompt(event.target.value)}
 												/>
@@ -343,7 +343,7 @@ export default function ModelsPage() {
 												<Button
 													type="submit"
 													disabled={isSaving}
-													className="flex-1 bg-[#e4bf80] text-black hover:bg-[#cda460]"
+													className="flex-1 bg-[#0AC18E] text-black hover:bg-[#cda460]"
 												>
 													{isSaving ? "Saving..." : "Save Model"}
 												</Button>

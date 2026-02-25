@@ -21,7 +21,7 @@ export default function WelcomePage() {
 		authProfile,
 		walletAddress,
 		walletChainLabel,
-		connectWalletAndAuthenticate,
+		loginWithPaytaca,
 		agentName,
 		strategy,
 		portfolio,
@@ -147,7 +147,7 @@ export default function WelcomePage() {
 				walletAddress={authProfile?.address || walletAddress}
 				walletChainLabel={walletChainLabel}
 				onConnect={() => {
-					void runSafeAction(() => connectWalletAndAuthenticate(""));
+					void runSafeAction(loginWithPaytaca);
 				}}
 				onOpenForge={() => router.push("/forge")}
 			/>

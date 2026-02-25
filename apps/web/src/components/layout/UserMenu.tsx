@@ -40,7 +40,7 @@ export function UserMenu() {
 					variant="ghost"
 					className="group relative h-9 md:h-10 overflow-hidden rounded-xl bg-black/40 px-4 font-display text-xs font-bold uppercase tracking-[0.16em] text-neutral-300 transition-all duration-300 hover:bg-black/60 hover:text-white backdrop-blur-md"
 				>
-					<FaWallet className="mr-2 h-3.5 w-3.5 text-[#e4bf80]" />
+					<FaWallet className="mr-2 h-3.5 w-3.5 text-[#0AC18E]" />
 					<span className="font-mono text-[11px] md:text-[13px] tracking-tight">
 						{shortAddress(authProfile.address)}
 					</span>
@@ -64,7 +64,7 @@ export function UserMenu() {
 						</span>
 						<Badge
 							variant="secondary"
-							className="rounded-lg bg-black/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#e4bf80] cursor-pointer hover:bg-[#e4bf80] hover:text-black transition-colors"
+							className="rounded-lg bg-black/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#0AC18E] cursor-pointer hover:bg-[#0AC18E] hover:text-black transition-colors"
 							onClick={(e) => {
 								e.stopPropagation();
 								void runSafeAction(copyAddress);

@@ -45,7 +45,7 @@ function formatUpdatedAt(ts: number): string {
 function RankBadge({ rank }: { rank: number; }) {
 	if (rank === 1)
 		return (
-			<div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#e4bf80]/20 text-[#e4bf80] font-bold text-xs ring-1 ring-[#e4bf80]/50 shadow-[0_0_8px_rgba(228,191,128,0.3)]">
+			<div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#0AC18E]/20 text-[#0AC18E] font-bold text-xs ring-1 ring-[#0AC18E]/50 shadow-[0_0_8px_rgba(228,191,128,0.3)]">
 				1
 			</div>
 		);
@@ -81,11 +81,11 @@ export function LeaderboardSection() {
 			{/* Header */}
 			<div className="mb-8 flex flex-col items-center gap-3">
 				<div className="flex items-center gap-3">
-					<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e4bf80]/10 text-[#e4bf80]">
+					<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0AC18E]/10 text-[#0AC18E]">
 						<Trophy className="h-4 w-4" />
 					</div>
 					<h2 className="text-2xl font-light uppercase tracking-[0.3em] text-white">
-						Global <span className="font-bold text-[#e4bf80]">Leaderboard</span>
+						Global <span className="font-bold text-[#0AC18E]">Leaderboard</span>
 					</h2>
 				</div>
 				<div className="flex items-center gap-2">
@@ -96,10 +96,10 @@ export function LeaderboardSection() {
 			{/* Table card */}
 			<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-neutral-900/50 backdrop-blur-md shadow-xl">
 				{/* Top gold line */}
-				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#e4bf80]/30 to-transparent" />
+				<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#0AC18E]/30 to-transparent" />
 
 				{/* Decorative orbs */}
-				<div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[#e4bf80]/5 blur-3xl" />
+				<div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[#0AC18E]/5 blur-3xl" />
 				<div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-white/3 blur-3xl" />
 
 				{/* Toolbar */}
@@ -210,7 +210,7 @@ export function LeaderboardSection() {
 													? <TrendingUp className="h-3 w-3 text-emerald-500 shrink-0" />
 													: <TrendingDown className="h-3 w-3 text-rose-500 shrink-0" />
 												}
-												<span className="font-bold text-sm text-white group-hover:text-[#e4bf80] transition-colors truncate max-w-[140px]">
+												<span className="font-bold text-sm text-white group-hover:text-[#0AC18E] transition-colors truncate max-w-[140px]">
 													{row.agentName}
 												</span>
 											</div>
@@ -234,7 +234,7 @@ export function LeaderboardSection() {
 											href={`${EXPLORER_BASE}${row.owner || row.playerAddress}`}
 											target="_blank"
 											rel="noopener noreferrer"
-											className="flex items-center gap-1 font-mono text-xs text-neutral-400 bg-white/5 hover:bg-white/10 hover:text-[#e4bf80] px-2 py-1 rounded transition-colors w-fit"
+											className="flex items-center gap-1 font-mono text-xs text-neutral-400 bg-white/5 hover:bg-white/10 hover:text-[#0AC18E] px-2 py-1 rounded transition-colors w-fit"
 										>
 											{shortAddress(row.owner || row.playerAddress)}
 											<ExternalLink className="h-2.5 w-2.5" />
@@ -284,7 +284,7 @@ export function LeaderboardSection() {
 								href={`https://chipnet.imaginary.cash/address/${process.env.NEXT_PUBLIC_LEADERBOARD_ADDRESS}`}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="hover:text-[#e4bf80] transition-colors"
+								className="hover:text-[#0AC18E] transition-colors"
 							>
 								{shortAddress(process.env.NEXT_PUBLIC_LEADERBOARD_ADDRESS || "")}
 							</a>

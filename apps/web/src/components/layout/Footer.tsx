@@ -11,7 +11,7 @@ export function Footer() {
 			{/* Radiant Background Effects */}
 			<div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-neutral-950 to-neutral-950" />
 			<div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-			<div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#e4bf80]/30 to-transparent" />
+			<div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#0AC18E]/30 to-transparent" />
 
 			<div className="mx-auto max-w-7xl px-6 lg:px-8">
 				<div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-24">
@@ -19,12 +19,12 @@ export function Footer() {
 					{/* Brand Section */}
 					<div className="lg:col-span-5 flex flex-col gap-6">
 						<Link href="/" className="group flex items-center gap-2 w-fit">
-							<div className="relative h-10 w-10 overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-white/10 group-hover:ring-[#e4bf80]/50 transition-all duration-300">
-								<div className="absolute inset-0 bg-gradient-to-br from-[#e4bf80]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-								<div className="absolute inset-0 flex items-center justify-center font-display font-bold text-[#e4bf80]">DB</div>
+							<div className="relative h-10 w-10 overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-white/10 group-hover:ring-[#0AC18E]/50 transition-all duration-300">
+								<div className="absolute inset-0 bg-gradient-to-br from-[#0AC18E]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+								<div className="absolute inset-0 flex items-center justify-center font-display font-bold text-[#0AC18E]">DF</div>
 							</div>
 							<h2 className="font-display text-2xl font-bold uppercase tracking-wide text-white">
-								De<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#e4bf80] to-[#b89b6f]">FIGHT</span>
+								De<span className="font-bold text-[#0AC18E]">FIGHT</span>
 							</h2>
 						</Link>
 
@@ -91,8 +91,8 @@ export function Footer() {
 							<span className="hidden md:inline">Built for decentralized intelligence.</span>
 						</div>
 						<div className="flex items-center gap-6">
-							<a href="#" className="hover:text-[#e4bf80] transition-colors">Privacy Policy</a>
-							<a href="#" className="hover:text-[#e4bf80] transition-colors">Terms of Service</a>
+							<a href="#" className="hover:text-[#0AC18E] transition-colors">Privacy Policy</a>
+							<a href="#" className="hover:text-[#0AC18E] transition-colors">Terms of Service</a>
 							<span className="font-mono text-neutral-700">v0.1.0-alpha</span>
 						</div>
 					</div>
@@ -108,7 +108,7 @@ function SocialLink({ href, icon, label }: { href: string; icon: React.ReactNode
 			href={href}
 			target="_blank"
 			rel="noopener noreferrer"
-			className="group relative flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-900 text-neutral-400 ring-1 ring-white/10 transition-all duration-300 hover:bg-[#e4bf80] hover:text-black hover:ring-[#e4bf80] hover:shadow-[0_0_15px_rgba(228,191,128,0.3)]"
+			className="group relative flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-900 text-neutral-400 ring-1 ring-white/10 transition-all duration-300 hover:bg-[#0AC18E] hover:text-black hover:ring-[#0AC18E] hover:shadow-[0_0_15px_rgba(228,191,128,0.3)]"
 			aria-label={label}
 		>
 			{icon}
@@ -121,12 +121,12 @@ function FooterLink({ href, children, icon }: { href: string; children: React.Re
 		<li>
 			<Link
 				href={href}
-				className="group flex items-center gap-2 text-sm text-neutral-500 transition-colors duration-200 hover:text-[#e4bf80]"
+				className="group flex items-center gap-2 text-sm text-neutral-500 transition-colors duration-200 hover:text-[#0AC18E]"
 			>
-				{icon && <span className="opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300 text-[#e4bf80]">{icon}</span>}
+				{icon && <span className="opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300 text-[#0AC18E]">{icon}</span>}
 				<span className="relative">
 					{children}
-					<span className="absolute -bottom-1 left-0 h-px w-0 bg-[#e4bf80] transition-all duration-300 group-hover:w-full"></span>
+					<span className="absolute -bottom-1 left-0 h-px w-0 bg-[#0AC18E] transition-all duration-300 group-hover:w-full"></span>
 				</span>
 			</Link>
 		</li>

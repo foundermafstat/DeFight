@@ -4,7 +4,7 @@
 CREATE TABLE public.auth_users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   wallet_address text NOT NULL UNIQUE,
-  chain_id integer NOT NULL DEFAULT 97,
+  chain_id integer NOT NULL DEFAULT 10001,
   last_login_at timestamp with time zone NOT NULL DEFAULT now(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT auth_users_pkey PRIMARY KEY (id)
@@ -44,7 +44,7 @@ CREATE TABLE public.user_prompt_models (
   model_name text NOT NULL,
   prompt_text text NOT NULL,
   llm_model text NOT NULL DEFAULT 'gpt-4.1-mini'::text,
-  symbol text NOT NULL DEFAULT 'BNBUSDT'::text,
+  symbol text NOT NULL DEFAULT 'BCHUSDT'::text,
   settings_json jsonb NOT NULL DEFAULT '{}'::jsonb,
   total_runs integer NOT NULL DEFAULT 0,
   total_trades integer NOT NULL DEFAULT 0,

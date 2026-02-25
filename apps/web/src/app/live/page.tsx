@@ -79,7 +79,7 @@ export default function LivePage() {
 			{/* Ambient Background Effects */}
 			<div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-neutral-950 to-neutral-950" />
 			<div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-			<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#e4bf80]/20 to-transparent" />
+			<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#0AC18E]/20 to-transparent" />
 
 			<div className="mx-auto max-w-[1700px] h-[calc(100vh-5rem)] flex flex-col gap-3 px-4 md:px-8 xl:px-10">
 
@@ -87,7 +87,7 @@ export default function LivePage() {
 				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between shrink-0">
 					<div className="flex items-center gap-3">
 						<h1 className="font-display text-2xl font-bold uppercase tracking-wide text-white">
-							Live <span className="text-[#e4bf80]">Feed</span>
+							Live <span className="text-[#0AC18E]">Feed</span>
 						</h1>
 						<div className="flex items-center gap-2 rounded-full border border-white/5 bg-white/5 px-3 py-1 backdrop-blur-sm">
 							<div className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></div>
@@ -102,7 +102,7 @@ export default function LivePage() {
 					<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#121418] p-1 flex flex-col min-h-0">
 						<div className="relative flex-1 rounded-xl bg-neutral-900/50 p-3 backdrop-blur-md flex flex-col min-h-0">
 							<div className="flex items-center gap-2 mb-3">
-								<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#e4bf80]/10 text-[#e4bf80]">
+								<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0AC18E]/10 text-[#0AC18E]">
 									<Cpu className="h-3.5 w-3.5" />
 								</div>
 								<h3 className="font-display text-sm font-medium text-white uppercase tracking-wide">Active Agent</h3>
@@ -127,7 +127,7 @@ export default function LivePage() {
 										) : (
 											<>
 												<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">Live PnL <span className="text-neutral-600 normal-case font-normal">(est.)</span></p>
-												<p className={`font-mono text-lg font-bold ${portfolio.pnl >= 0 ? 'text-[#e4bf80]' : 'text-rose-400'}`}>
+												<p className={`font-mono text-lg font-bold ${portfolio.pnl >= 0 ? 'text-[#0AC18E]' : 'text-rose-400'}`}>
 													{portfolio.pnl >= 0 ? '+' : ''}{portfolio.pnl.toFixed(2)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
 												</p>
 											</>
@@ -209,10 +209,10 @@ export default function LivePage() {
 
 					{/* Middle: Terminal Console */}
 					<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] p-1 flex flex-col min-h-0">
-						<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#e4bf80]/30 to-transparent" />
+						<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#0AC18E]/30 to-transparent" />
 						<div className="relative flex-1 bg-black/40 p-3 font-mono text-xs flex flex-col min-h-0">
 							<div className="mb-3 flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
-								<div className="flex items-center gap-2 text-[#e4bf80]">
+								<div className="flex items-center gap-2 text-[#0AC18E]">
 									<Terminal className="h-4 w-4" />
 									<span className="uppercase tracking-widest font-bold text-[10px]">System Output</span>
 								</div>
@@ -232,12 +232,12 @@ export default function LivePage() {
 									<div className="space-y-1">
 										{/* Blinking cursor at top = newest position */}
 										{!agentStopped && (
-											<div className="h-3 mb-1 animate-pulse w-2.5 bg-[#e4bf80]"></div>
+											<div className="h-3 mb-1 animate-pulse w-2.5 bg-[#0AC18E]"></div>
 										)}
 										{soloLogs.map((log, idx) => (
 											<div key={`${log.timestamp}-${idx}`} className="flex gap-2 text-neutral-300 hover:bg-white/5 p-1 rounded transition-colors group items-start">
 												<span className="text-neutral-600 shrink-0 select-none">[{formatClock(log.timestamp)}]</span>
-												<span className="group-hover:text-[#e4bf80] transition-colors flex-1 break-all">{log.message}</span>
+												<span className="group-hover:text-[#0AC18E] transition-colors flex-1 break-all">{log.message}</span>
 												{log.txHash && (
 													<a
 														href={`${EXPLORER_BASE}${log.txHash}`}
@@ -262,7 +262,7 @@ export default function LivePage() {
 						<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#121418] p-1 h-[200px] shrink-0">
 							<div className="relative h-full rounded-xl bg-neutral-900/50 p-3 backdrop-blur-md flex flex-col">
 								<div className="flex items-center gap-2 mb-1 text-white shrink-0">
-									<Activity className="h-3.5 w-3.5 text-[#e4bf80]" />
+									<Activity className="h-3.5 w-3.5 text-[#0AC18E]" />
 									<h3 className="font-display text-xs font-bold uppercase tracking-wide">Performance Metric</h3>
 								</div>
 
@@ -271,8 +271,8 @@ export default function LivePage() {
 										<AreaChart data={liveSeries} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
 											<defs>
 												<linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
-													<stop offset="5%" stopColor="#e4bf80" stopOpacity={0.3} />
-													<stop offset="95%" stopColor="#e4bf80" stopOpacity={0} />
+													<stop offset="5%" stopColor="#0AC18E" stopOpacity={0.3} />
+													<stop offset="95%" stopColor="#0AC18E" stopOpacity={0} />
 												</linearGradient>
 											</defs>
 											<CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -300,12 +300,12 @@ export default function LivePage() {
 													fontSize: "11px",
 													boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
 												}}
-												itemStyle={{ color: "#e4bf80" }}
+												itemStyle={{ color: "#0AC18E" }}
 											/>
 											<Area
 												type="monotone"
 												dataKey="pnl"
-												stroke="#e4bf80"
+												stroke="#0AC18E"
 												strokeWidth={2}
 												fillOpacity={1}
 												fill="url(#colorPnl)"
@@ -321,7 +321,7 @@ export default function LivePage() {
 							<div className="relative h-full rounded-xl bg-neutral-900/50 backdrop-blur-md flex flex-col">
 								<div className="p-3 border-b border-white/5 flex items-center justify-between shrink-0">
 									<div className="flex items-center gap-2 text-white">
-										<Globe className="h-3.5 w-3.5 text-[#e4bf80]" />
+										<Globe className="h-3.5 w-3.5 text-[#0AC18E]" />
 										<h3 className="font-display text-xs font-bold uppercase tracking-wide">Global Rankings</h3>
 									</div>
 									<div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -346,7 +346,7 @@ export default function LivePage() {
 											)}
 											{leaderboard.slice(0, 10).map((row) => (
 												<TableRow key={row.playerAddress} className="border-white/5 hover:bg-white/5 transition-colors group">
-													<TableCell className="font-display text-[#e4bf80] text-sm py-1.5">#{row.rank}</TableCell>
+													<TableCell className="font-display text-[#0AC18E] text-sm py-1.5">#{row.rank}</TableCell>
 													<TableCell className="py-1.5">
 														<div className="flex flex-col">
 															<span className="text-xs text-neutral-200 font-medium group-hover:text-white">{row.agentName}</span>
@@ -386,7 +386,7 @@ export default function LivePage() {
 
 								{/* Header */}
 								<div className="flex items-center gap-3 mb-6">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e4bf80]/10 text-[#e4bf80]">
+									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0AC18E]/10 text-[#0AC18E]">
 										<Trophy className="h-5 w-5" />
 									</div>
 									<div>
@@ -418,7 +418,7 @@ export default function LivePage() {
 												href={`${EXPLORER_BASE}${stopResult.txHash}`}
 												target="_blank"
 												rel="noopener noreferrer"
-												className="flex items-center gap-2 text-[#e4bf80] hover:text-[#f0d49a] transition-colors font-mono text-xs"
+												className="flex items-center gap-2 text-[#0AC18E] hover:text-[#f0d49a] transition-colors font-mono text-xs"
 											>
 												{stopResult.txHash.slice(0, 10)}...{stopResult.txHash.slice(-8)}
 												<ExternalLink className="h-3 w-3" />

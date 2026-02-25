@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { runSafeAction } from "@/lib/safe-action";
 
 export function Header() {
-	const { isAuthenticated, authProfile, connectWalletAndAuthenticate } = useGame();
+	const { isAuthenticated, authProfile, loginWithPaytaca } = useGame();
 	const pathname = usePathname();
 	const [hasScrolled, setHasScrolled] = useState(false);
 
@@ -70,13 +70,13 @@ export function Header() {
 							className={cn(
 								"relative px-4 py-2 font-display text-[13px] font-medium uppercase tracking-[0.15em] transition-all duration-300",
 								isActive(item.href)
-									? "text-[#e4bf80]"
+									? "text-[#0AC18E]"
 									: "text-[#b8bfca] hover:text-white",
 							)}
 						>
 							{item.label}
 							{isActive(item.href) && (
-								<span className="absolute bottom-0 left-4 right-4 h-[2px] bg-[#e4bf80] shadow-[0_0_12px_rgba(228,191,128,0.6)]" />
+								<span className="absolute bottom-0 left-4 right-4 h-[2px] bg-[#0AC18E] shadow-[0_0_12px_rgba(228,191,128,0.6)]" />
 							)}
 						</Link>
 					))}
@@ -86,13 +86,13 @@ export function Header() {
 					{!isAuthenticated && (
 						<Button
 							type="button"
-							className="group relative h-9 md:h-10 overflow-hidden rounded-xl border border-white/10 bg-[#1c2128] px-4 md:px-6 font-display text-[10px] md:text-xs font-bold uppercase tracking-[0.16em] text-white transition-all duration-300 hover:border-[#e4bf80]/50 hover:bg-[#242a33] hover:shadow-[0_0_20px_rgba(228,191,128,0.15)]"
+							className="group relative h-9 md:h-10 overflow-hidden rounded-xl border border-white/10 bg-[#1c2128] px-4 md:px-6 font-display text-[10px] md:text-xs font-bold uppercase tracking-[0.16em] text-white transition-all duration-300 hover:border-[#0AC18E]/50 hover:bg-[#242a33] hover:shadow-[0_0_20px_rgba(228,191,128,0.15)]"
 							onClick={() => {
-								void runSafeAction(() => connectWalletAndAuthenticate(""));
+								void runSafeAction(loginWithPaytaca);
 							}}
 						>
 							<div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-1000 group-hover:translate-x-[100%]" />
-							<FaWallet className="mr-2 h-3 w-3 md:h-3.5 md:w-3.5 text-[#e4bf80]" />
+							<FaWallet className="mr-2 h-3 w-3 md:h-3.5 md:w-3.5 text-[#0AC18E]" />
 							<span className="hidden sm:inline">Connect Wallet</span>
 							<span className="sm:hidden">Connect</span>
 						</Button>
@@ -112,7 +112,7 @@ export function Header() {
 							className={cn(
 								"whitespace-nowrap rounded-lg px-3 py-1.5 font-display text-[10px] font-medium uppercase tracking-[0.12em] transition-all duration-300",
 								isActive(item.href)
-									? "bg-[#e4bf80]/10 text-[#e4bf80]"
+									? "bg-[#0AC18E]/10 text-[#0AC18E]"
 									: "text-[#8f97a3] hover:text-white hover:bg-white/5",
 							)}
 						>
@@ -121,6 +121,6 @@ export function Header() {
 					))}
 				</nav>
 			</div>
-		</header>
+		</header >
 	);
 }

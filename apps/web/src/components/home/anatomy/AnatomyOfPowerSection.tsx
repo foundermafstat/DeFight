@@ -66,7 +66,7 @@ export function AnatomyOfPowerSection() {
 			<div className="relative z-10 w-full max-w-6xl px-4 md:px-6 mb-32">
 				<div className="mb-12 text-center">
 					<h2 className="text-2xl font-light uppercase tracking-[0.3em] text-white">
-						How it <span className="font-bold text-[#e4bf80]">Works</span>
+						How it <span className="font-bold text-[#0AC18E]">Works</span>
 					</h2>
 				</div>
 
@@ -88,7 +88,7 @@ export function AnatomyOfPowerSection() {
 										<div className="mb-4 text-4xl font-display text-neutral-700 transition-all duration-500 group-hover:scale-110 group-hover:text-neutral-500 origin-left">
 											{step.step}
 										</div>
-										<h3 className="mb-2 font-display text-lg font-bold uppercase tracking-wide text-white transition-colors duration-300 group-hover:text-[#e4bf80]">
+										<h3 className="mb-2 font-display text-lg font-bold uppercase tracking-wide text-white transition-colors duration-300 group-hover:text-[#0AC18E]">
 											{step.title}
 										</h3>
 										<p className="text-sm leading-relaxed text-neutral-400 transition-colors duration-300 group-hover:text-neutral-300">
@@ -106,7 +106,7 @@ export function AnatomyOfPowerSection() {
 
 			<div className="relative z-10 mb-20 text-center">
 				<h2 className="text-3xl font-light uppercase tracking-[0.3em] text-white">
-					your custom <span className="font-bold text-[#e4bf80]">defai agent</span>
+					your custom <span className="font-bold text-[#0AC18E]">defai agent</span>
 				</h2>
 			</div>
 
@@ -117,7 +117,7 @@ export function AnatomyOfPowerSection() {
 				</div>
 
 				{/* Animated Background Glow */}
-				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#e4bf80]/15 rounded-full blur-[100px] animate-pulse pointer-events-none z-0 mix-blend-screen" />
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#0AC18E]/15 rounded-full blur-[100px] animate-pulse pointer-events-none z-0 mix-blend-screen" />
 
 
 				{/* Top Right Annotation: Strategy Core */}
@@ -150,15 +150,15 @@ export function AnatomyOfPowerSection() {
 				>
 					{/* Connector Line */}
 					<div className="flex items-center">
-						<div className="h-1 w-1 rounded-full bg-[#e4bf80] shadow-[0_0_10px_rgba(228,191,128,0.8)]" />
+						<div className="h-1 w-1 rounded-full bg-[#0AC18E] shadow-[0_0_10px_rgba(228,191,128,0.8)]" />
 						<div className="relative h-px w-8 overflow-hidden bg-neutral-700 md:w-16">
-							<div className="absolute inset-0 w-full translate-x-full bg-[#e4bf80] transition-transform duration-1000 group-hover:translate-x-0" />
+							<div className="absolute inset-0 w-full translate-x-full bg-[#0AC18E] transition-transform duration-1000 group-hover:translate-x-0" />
 						</div>
 					</div>
 
 					{/* Glass Content */}
 					<div className="rounded-xl bg-black/40 p-4 backdrop-blur-xl transition-all duration-300 hover:bg-black/60">
-						<h4 className="font-display text-xs font-bold uppercase tracking-wide text-[#e4bf80]">Total roi</h4>
+						<h4 className="font-display text-xs font-bold uppercase tracking-wide text-[#0AC18E]">Total roi</h4>
 						<p className="font-display mt-1 text-[10px] uppercase leading-relaxed tracking-widest text-neutral-400">
 							PVP power. <br />
 							Instant ROI tracker
@@ -219,7 +219,7 @@ export function AnatomyOfPowerSection() {
 				>
 					{/* Glass Content */}
 					<div className="rounded-xl bg-black/40 p-4 backdrop-blur-xl transition-all duration-300 hover:bg-black/60">
-						<h4 className="font-display text-xs font-bold uppercase tracking-wide text-[#e4bf80]">Total ROI</h4>
+						<h4 className="font-display text-xs font-bold uppercase tracking-wide text-[#0AC18E]">Total ROI</h4>
 						<p className="font-display mt-1 text-[10px] uppercase leading-relaxed tracking-widest text-neutral-400">
 							Verifiable on-chain history. <br />
 							Instant PnL tracking.
@@ -229,9 +229,9 @@ export function AnatomyOfPowerSection() {
 					{/* Connector Line */}
 					<div className="flex items-center">
 						<div className="relative h-px w-8 overflow-hidden bg-neutral-700 md:w-16">
-							<div className="absolute inset-0 w-full -translate-x-full bg-[#e4bf80] transition-transform duration-1000 group-hover:translate-x-0" />
+							<div className="absolute inset-0 w-full -translate-x-full bg-[#0AC18E] transition-transform duration-1000 group-hover:translate-x-0" />
 						</div>
-						<div className="h-1 w-1 rounded-full bg-[#e4bf80] shadow-[0_0_10px_rgba(234,179,8,0.8)]" />
+						<div className="h-1 w-1 rounded-full bg-[#0AC18E] shadow-[0_0_10px_rgba(234,179,8,0.8)]" />
 					</div>
 				</div>
 

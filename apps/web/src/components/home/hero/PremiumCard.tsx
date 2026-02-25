@@ -81,7 +81,7 @@ export function PremiumCard({ card, onActivate }: PremiumCardProps) {
 	const isNegative = !isNeutral && (card.pnl < 0 || card.roiPct < 0);
 	const sentiment = isNeutral ? "neutral" : isNegative ? "negative" : "positive";
 
-	const accentColor = isNeutral ? "#e4bf80" : (isNegative ? "#fca5a5" : "#86efac");
+	const accentColor = isNeutral ? "#0AC18E" : (isNegative ? "#fca5a5" : "#86efac");
 	const chartPath = useMemo(() => generateChartPath(card.id, sentiment), [card.id, sentiment]);
 
 	const chartFill = accentColor;
@@ -152,7 +152,7 @@ export function PremiumCard({ card, onActivate }: PremiumCardProps) {
 					<div className="flex items-start justify-between">
 						<div>
 							<p className="font-display text-[0.65rem] uppercase tracking-widest text-[#8f97a3]">{card.sourceLabel}</p>
-							<p className="font-display mt-0.5 text-[1.4rem] leading-none text-[#e4bf80] drop-shadow-md">{card.agentName}</p>
+							<p className="font-display mt-0.5 text-[1.4rem] leading-none text-[#0AC18E] drop-shadow-md">{card.agentName}</p>
 						</div>
 						<div
 							className="rounded-md border border-white/5 bg-white/5 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider backdrop-blur-md"

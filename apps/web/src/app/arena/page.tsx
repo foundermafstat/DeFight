@@ -56,7 +56,7 @@ export default function ArenaPage() {
 			{/* Ambient Background Effects */}
 			<div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900/40 via-neutral-950 to-neutral-950" />
 			<div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-			<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#e4bf80]/20 to-transparent" />
+			<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-[#0AC18E]/20 to-transparent" />
 
 			<div className="mx-auto max-w-[1700px] space-y-6 px-4 pb-4 pt-2 md:px-8 xl:px-10">
 
@@ -64,7 +64,7 @@ export default function ArenaPage() {
 				<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 					<div>
 						<h1 className="font-display text-4xl font-bold uppercase tracking-wide text-white">
-							Battle <span className="text-[#e4bf80]">Arena</span>
+							Battle <span className="text-[#0AC18E]">Arena</span>
 						</h1>
 						<p className="mt-2 max-w-xl text-neutral-400">
 							Synchronized PvP environments. Pit agents against each other
@@ -88,7 +88,7 @@ export default function ArenaPage() {
 					<div className="relative rounded-xl bg-neutral-900/50 p-6 backdrop-blur-md">
 						<div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
 							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e4bf80]/10 text-[#e4bf80]">
+								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0AC18E]/10 text-[#0AC18E]">
 									<Swords className="h-5 w-5" />
 								</div>
 								<div>
@@ -99,7 +99,7 @@ export default function ArenaPage() {
 
 							<div className="flex items-center gap-4">
 								<div className="flex items-center gap-2 rounded-lg border border-white/5 bg-black/20 px-4 py-2">
-									<Timer className="h-4 w-4 text-[#e4bf80]" />
+									<Timer className="h-4 w-4 text-[#0AC18E]" />
 									<span className={`font-mono font-bold ${duelTimeLeft !== "00:00" ? 'text-white' : 'text-neutral-500'}`}>
 										{duelTimeLeft}
 									</span>
@@ -124,12 +124,12 @@ export default function ArenaPage() {
 									<Users className="h-3 w-3" /> Challenger (Left)
 								</label>
 								<Select value={leftAgentKey} onValueChange={(value) => setLeftAgentKey(value)}>
-									<SelectTrigger className="h-11 border-white/10 bg-black/20 text-white focus:ring-[#e4bf80]/20">
+									<SelectTrigger className="h-11 border-white/10 bg-black/20 text-white focus:ring-[#0AC18E]/20">
 										<SelectValue placeholder="Select left agent" />
 									</SelectTrigger>
 									<SelectContent className="border-neutral-800 bg-[#1a1d21] text-neutral-200">
 										{agentOptions.map((option) => (
-											<SelectItem key={option.key} value={option.key} className="focus:bg-white/5 focus:text-[#e4bf80]">
+											<SelectItem key={option.key} value={option.key} className="focus:bg-white/5 focus:text-[#0AC18E]">
 												{option.name}
 											</SelectItem>
 										))}
@@ -146,12 +146,12 @@ export default function ArenaPage() {
 									<Users className="h-3 w-3" /> Opponent (Right)
 								</label>
 								<Select value={rightAgentKey} onValueChange={(value) => setRightAgentKey(value)}>
-									<SelectTrigger className="h-11 border-white/10 bg-black/20 text-white focus:ring-[#e4bf80]/20">
+									<SelectTrigger className="h-11 border-white/10 bg-black/20 text-white focus:ring-[#0AC18E]/20">
 										<SelectValue placeholder="Select right agent" />
 									</SelectTrigger>
 									<SelectContent className="border-neutral-800 bg-[#1a1d21] text-neutral-200">
 										{agentOptions.map((option) => (
-											<SelectItem key={option.key} value={option.key} className="focus:bg-white/5 focus:text-[#e4bf80]">
+											<SelectItem key={option.key} value={option.key} className="focus:bg-white/5 focus:text-[#0AC18E]">
 												{option.name}
 											</SelectItem>
 										))}
@@ -163,7 +163,7 @@ export default function ArenaPage() {
 						<div className="mt-8 flex justify-center">
 							<Button
 								type="button"
-								className="bg-[#e4bf80] text-black hover:bg-[#cda460] px-12 h-11 uppercase tracking-wider font-bold shadow-[0_0_20px_rgba(228,191,128,0.2)] hover:shadow-[0_0_30px_rgba(228,191,128,0.4)] transition-all"
+								className="bg-[#0AC18E] text-black hover:bg-[#cda460] px-12 h-11 uppercase tracking-wider font-bold shadow-[0_0_20px_rgba(228,191,128,0.2)] hover:shadow-[0_0_30px_rgba(228,191,128,0.4)] transition-all"
 								onClick={() => {
 									void runSafeAction(startDuel);
 								}}
@@ -186,10 +186,10 @@ export default function ArenaPage() {
 
 					{/* Left Terminal */}
 					<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] p-1 flex flex-col h-[400px]">
-						<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#e4bf80]/30 to-transparent" />
+						<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#0AC18E]/30 to-transparent" />
 						<div className="relative flex-1 bg-black/40 p-4 font-mono text-xs flex flex-col">
 							<div className="mb-4 flex items-center justify-between border-b border-white/5 pb-2">
-								<div className="flex items-center gap-2 text-[#e4bf80]">
+								<div className="flex items-center gap-2 text-[#0AC18E]">
 									<Terminal className="h-4 w-4" />
 									<span className="uppercase tracking-widest font-bold text-[10px]">{duelLeft?.agentName || "LEFT AGENT"}</span>
 								</div>
@@ -206,7 +206,7 @@ export default function ArenaPage() {
 										{arenaLeftLogs.map((log, idx) => (
 											<div key={`${log.timestamp}-${idx}`} className="flex gap-2 text-neutral-300">
 												<span className="text-neutral-600 shrink-0">[{formatClock(log.timestamp)}]</span>
-												<span className="text-[#e4bf80]">{log.message}</span>
+												<span className="text-[#0AC18E]">{log.message}</span>
 											</div>
 										))}
 									</div>
@@ -217,7 +217,7 @@ export default function ArenaPage() {
 
 					{/* Right Terminal */}
 					<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] p-1 flex flex-col h-[400px]">
-						<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#e4bf80]/30 to-transparent" />
+						<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#0AC18E]/30 to-transparent" />
 						<div className="relative flex-1 bg-black/40 p-4 font-mono text-xs flex flex-col">
 							<div className="mb-4 flex items-center justify-between border-b border-white/5 pb-2">
 								<div className="flex items-center gap-2 text-neutral-400">
@@ -251,7 +251,7 @@ export default function ArenaPage() {
 				<section className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#121418] p-1">
 					<div className="relative rounded-xl bg-neutral-900/50 p-6 backdrop-blur-md">
 						<div className="mb-6 flex items-center gap-2 text-white">
-							<Swords className="h-4 w-4 text-[#e4bf80]" />
+							<Swords className="h-4 w-4 text-[#0AC18E]" />
 							<h3 className="font-display text-sm font-bold uppercase tracking-wide">Comparative Performance</h3>
 						</div>
 
@@ -287,7 +287,7 @@ export default function ArenaPage() {
 									<Line
 										type="monotone"
 										dataKey="left"
-										stroke="#e4bf80"
+										stroke="#0AC18E"
 										strokeWidth={2}
 										dot={false}
 										name={duelLeft?.agentName || "Left Agent"}

@@ -180,7 +180,7 @@ export function ScrollChoreographyHero({
 						<img
 							src="/db-logo.svg"
 							alt="Unlimited"
-							className="h-32 md:h-64 xl:h-[64rem] w-auto fill-[#e4bf80] opacity-30"
+							className="h-32 md:h-64 xl:h-[64rem] w-auto fill-[#0AC18E] opacity-30"
 						/>
 					</div>
 

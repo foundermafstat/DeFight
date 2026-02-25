@@ -4,6 +4,9 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState,
 import { io, Socket } from "socket.io-client";
 import { toast as notify } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/safe-action";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 
 // Types
@@ -253,6 +256,7 @@ interface GameContextType {
 	tusdtBalance: string;
 	tusdtSymbol: string;
 	connectWalletAndAuthenticate: (address: string) => Promise<void>;
+	loginWithPaytaca: () => Promise<void>;
 	logout: () => Promise<void>;
 	refreshBalances: (addressParam?: string) => Promise<void>;
 	copyAddress: () => Promise<void>;
@@ -312,6 +316,10 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 	const [status, setStatus] = useState("System ready");
 	const [analysis, setAnalysis] = useState<PromptAnalysis | null>(null);
 	const [commitStatus, setCommitStatus] = useState("Not committed");
+
+	// Auth Modal State
+	const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+	const [authInputAddress, setAuthInputAddress] = useState("");
 
 	const [authToken, setAuthToken] = useState("");
 	const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
@@ -548,6 +556,29 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 			const message = getErrorMessage(error, "Wallet authentication failed");
 			setStatus(message);
 			pushToast(message, "error");
+		}
+	};
+
+	const loginWithPaytaca = async () => {
+		try {
+			// Check if Paytaca extension is injected
+			if (typeof window !== "undefined" && (window as any).paytaca) {
+				const paytacaProvider = (window as any).paytaca;
+				// Example JSON-RPC method, standard for WalletConnect-based extension providers
+				const accounts = await paytacaProvider.request({ method: "requestAccounts" });
+
+				if (accounts && accounts.length > 0) {
+					const bchAddress = accounts[0];
+					await connectWalletAndAuthenticate(bchAddress);
+					return;
+				}
+			}
+
+			// Fallback if not injected or request fails
+			setIsAuthModalOpen(true);
+		} catch (error: any) {
+			console.error("Paytaca login error:", error);
+			setIsAuthModalOpen(true);
 		}
 	};
 
@@ -983,6 +1014,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		tusdtBalance,
 		tusdtSymbol,
 		connectWalletAndAuthenticate,
+		loginWithPaytaca,
 		logout,
 		refreshBalances,
 		copyAddress,
@@ -1020,7 +1052,60 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		agentOptions
 	};
 
-	return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
+	return (
+		<GameContext.Provider value={value}>
+			{children}
+
+			<Dialog open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen}>
+				<DialogContent className="border-white/10 bg-[#121418] text-white sm:max-w-[425px]">
+					<DialogHeader>
+						<DialogTitle className="font-display tracking-wider text-[#0AC18E]">Connect Wallet</DialogTitle>
+						<DialogDescription className="text-neutral-400">
+							Paytaca extension not found or connection failed. Please enter your Chipnet (bchtest:) address manually, or install the Paytaca extension.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-4 py-4">
+						<div className="flex flex-col gap-2">
+							<Input
+								id="wallet-address"
+								placeholder="bchtest:qq..."
+								className="border-white/10 bg-black/50 text-white placeholder:text-neutral-600 focus-visible:ring-[#0AC18E]"
+								value={authInputAddress}
+								onChange={(e) => setAuthInputAddress(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' && authInputAddress) {
+										setIsAuthModalOpen(false);
+										void connectWalletAndAuthenticate(authInputAddress);
+									}
+								}}
+							/>
+						</div>
+					</div>
+					<div className="flex justify-end gap-3">
+						<Button
+							type="button"
+							variant="outline"
+							className="border-white/10 bg-transparent text-white hover:bg-white/5"
+							onClick={() => setIsAuthModalOpen(false)}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="button"
+							className="bg-[#0AC18E] text-black hover:bg-[#cda460]"
+							disabled={!authInputAddress}
+							onClick={() => {
+								setIsAuthModalOpen(false);
+								void connectWalletAndAuthenticate(authInputAddress);
+							}}
+						>
+							Connect
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+		</GameContext.Provider>
+	);
 }
 
 export function useGame() {
