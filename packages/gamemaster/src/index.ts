@@ -1,0 +1,714 @@
+import dotenv from "dotenv";
+import path from "path";
+import express, { NextFunction, Request, Response } from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
+import { buildTradingSystemPrompt, processAgentSignal } from "@aibattles/engine";
+import { AIAgentService } from "./services/AIAgentService";
+import { LeaderboardService } from "./services/LeaderboardService";
+import { MarketDataService } from "./services/MarketDataService";
+import { TradingOrchestrator } from "./services/TradingOrchestrator";
+import { TournamentService } from "./services/TournamentService";
+import { SupabaseAccountModelsStore } from "./services/SupabaseAccountModelsStore";
+import { AuthClaims, AuthService } from "./auth/AuthService";
+
+// Load env: package-local .env takes highest priority (contains ORACLE_PRIVATE_KEY etc.)
+// Then root monorepo .env fills in anything missing (OPENAI_API_KEY, SUPABASE keys etc.)
+dotenv.config({ path: path.resolve(__dirname, "../.env") });               // packages/gamemaster/.env
+dotenv.config({ path: path.resolve(__dirname, "../../.env"), override: false }); // packages/.env (if any)
+dotenv.config({ path: path.resolve(__dirname, "../../../.env"), override: false }); // root .env
+
+const PORT = Number(process.env.PORT || 3001);
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
+const AUTH_DOMAIN = process.env.AUTH_DOMAIN || "localhost:3000";
+const AUTH_CHAIN_ID = Number(process.env.AUTH_CHAIN_ID || 97);
+const AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET || "dev-only-change-me";
+const AUTH_SESSION_TTL_SEC = Number(process.env.AUTH_SESSION_TTL_SEC || 60 * 60 * 24);
+const AUTH_NONCE_TTL_MS = Number(process.env.AUTH_NONCE_TTL_MS || 5 * 60 * 1000);
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "awb_auth";
+
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const DEFAULT_SYMBOL = process.env.DEFAULT_SYMBOL || "BNBUSDT";
+const DEFAULT_CYCLES = Number(process.env.DEFAULT_AGENT_CYCLES || 3);
+const DEFAULT_INTERVAL_MS = Number(process.env.DEFAULT_AGENT_INTERVAL_MS || 7000);
+const TOURNAMENT_DURATION_SEC = Number(process.env.TOURNAMENT_DURATION_SEC || 900);
+const TOURNAMENT_TICK_SEC = Number(process.env.TOURNAMENT_TICK_SEC || 30);
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+	|| process.env.SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const SUPABASE_TABLE = process.env.SUPABASE_LEADERBOARD_TABLE || "leaderboard_scores";
+const SUPABASE_USERS_TABLE = process.env.SUPABASE_USERS_TABLE || "auth_users";
+const SUPABASE_MODELS_TABLE = process.env.SUPABASE_MODELS_TABLE || "user_prompt_models";
+const SUPABASE_RUNS_TABLE = process.env.SUPABASE_MODEL_RUNS_TABLE || "user_prompt_model_runs";
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+	cors: {
+		origin: FRONTEND_ORIGIN,
+		credentials: true,
+	},
+});
+
+const authService = new AuthService({
+	jwtSecret: AUTH_JWT_SECRET,
+	sessionTtlSec: AUTH_SESSION_TTL_SEC,
+});
+
+const leaderboardService = new LeaderboardService({
+	scoreScale: 100,
+	supabaseUrl: SUPABASE_URL,
+	supabaseKey: SUPABASE_KEY,
+	supabaseTable: SUPABASE_TABLE,
+});
+
+const marketDataService = new MarketDataService(process.env.BINANCE_BASE_URL);
+const aiAgentService = new AIAgentService(process.env.OPENAI_API_KEY, OPENAI_MODEL);
+
+const tradingOrchestrator = new TradingOrchestrator(
+	aiAgentService,
+	marketDataService,
+	leaderboardService,
+);
+const tournamentService = new TournamentService(
+	tradingOrchestrator,
+	marketDataService,
+	leaderboardService,
+);
+const accountModelsStore = new SupabaseAccountModelsStore({
+	url: SUPABASE_URL,
+	key: SUPABASE_KEY,
+	usersTable: SUPABASE_USERS_TABLE,
+	modelsTable: SUPABASE_MODELS_TABLE,
+	runsTable: SUPABASE_RUNS_TABLE,
+});
+
+
+
+type AuthedRequest = Request & { auth?: AuthClaims; };
+
+const AgentSchema = z.object({
+	playerAddress: z.string().min(8),
+	agentName: z.string().min(2).max(64),
+	strategy: z.string().min(10).max(4000),
+});
+
+const LoginRequestSchema = z.object({
+	address: z.string().startsWith("bchtest:", "Invalid Chipnet BCH address"),
+});
+
+const SaveModelSchema = z.object({
+	modelName: z.string().min(2).max(80),
+	prompt: z.string().min(10).max(8000),
+	llmModel: z.string().min(2).max(120).optional(),
+	symbol: z.string().min(4).max(24).optional(),
+	settings: z.record(z.unknown()).optional(),
+});
+
+app.use(cors({
+	origin: FRONTEND_ORIGIN,
+	credentials: true,
+}));
+app.use(cookieParser());
+app.use(express.json());
+
+function extractAuthToken(req: Request): string | null {
+	const header = req.header("authorization") || req.header("Authorization");
+	if (header?.startsWith("Bearer ")) {
+		return header.slice(7).trim();
+	}
+
+	const cookieToken = (req.cookies as Record<string, string | undefined>)?.[AUTH_COOKIE_NAME];
+	return cookieToken || null;
+}
+
+function optionalAuth(req: AuthedRequest, _res: Response, next: NextFunction): void {
+	const token = extractAuthToken(req);
+	if (!token) {
+		next();
+		return;
+	}
+
+	try {
+		req.auth = authService.verifyToken(token);
+	} catch {
+		// Ignore and continue unauthenticated.
+	}
+
+	next();
+}
+
+function requireAuth(req: AuthedRequest, res: Response, next: NextFunction): void {
+	const token = extractAuthToken(req);
+	if (!token) {
+		res.status(401).json({ error: "Authorization required" });
+		return;
+	}
+
+	try {
+		req.auth = authService.verifyToken(token);
+		next();
+	} catch (error) {
+		res.status(401).json({
+			error: error instanceof Error ? error.message : "Invalid auth token",
+		});
+	}
+}
+
+async function persistAuthenticatedUserProfile(walletAddress: string, chainId: number): Promise<void> {
+	if (!accountModelsStore.isEnabled) {
+		return;
+	}
+
+	await accountModelsStore.touchUserLogin(walletAddress, chainId);
+}
+
+app.post("/auth/login", async (req, res) => {
+	const parsed = LoginRequestSchema.safeParse(req.body);
+	if (!parsed.success) {
+		return res.status(400).json({
+			error: "Invalid payload",
+			issues: parsed.error.issues,
+		});
+	}
+
+	let verified;
+	try {
+		verified = authService.loginWithBchAddress(parsed.data.address);
+	} catch (error) {
+		return res.status(401).json({
+			error: error instanceof Error ? error.message : "Login failed",
+		});
+	}
+
+	try {
+		await persistAuthenticatedUserProfile(verified.address, verified.chainId);
+
+		res.cookie(AUTH_COOKIE_NAME, verified.token, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "lax",
+			maxAge: AUTH_SESSION_TTL_SEC * 1000,
+		});
+
+		return res.json({
+			ok: true,
+			token: verified.token,
+			address: verified.address,
+			chainId: verified.chainId,
+			expiresAt: verified.expiresAt,
+		});
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Cannot persist authenticated user",
+		});
+	}
+});
+
+app.get("/auth/me", requireAuth, async (req: AuthedRequest, res) => {
+	const auth = req.auth!;
+
+	try {
+		await persistAuthenticatedUserProfile(auth.sub, auth.chainId);
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Cannot sync authenticated user profile",
+		});
+	}
+
+	return res.json({
+		ok: true,
+		address: auth.sub,
+		chainId: auth.chainId,
+		issuedAt: auth.iat ? auth.iat * 1000 : null,
+		expiresAt: auth.exp ? auth.exp * 1000 : null,
+	});
+});
+
+app.post("/auth/logout", (_req, res) => {
+	res.clearCookie(AUTH_COOKIE_NAME, {
+		httpOnly: true,
+		sameSite: "lax",
+		secure: process.env.NODE_ENV === "production",
+	});
+
+	return res.json({ ok: true });
+});
+
+app.get("/health", optionalAuth, async (req: AuthedRequest, res) => {
+	const leaderboard = await leaderboardService.getLeaderboard();
+	res.json({
+		status: "ok",
+		mode: leaderboardService.storageMode,
+		oracleAddress: leaderboardService.oracleAddress,
+		supabaseEnabled: leaderboardService.isSupabaseEnabled,
+		accountModelsEnabled: accountModelsStore.isEnabled,
+		leaderboardSize: leaderboard.length,
+		authenticated: Boolean(req.auth),
+	});
+});
+
+app.get("/leaderboard", async (_req, res) => {
+	const leaderboard = await leaderboardService.getLeaderboard();
+	res.json({ leaderboard });
+});
+
+// PancakeSwapService removed
+
+app.get("/market/price/:symbol", async (req, res) => {
+	const symbol = req.params.symbol.toUpperCase();
+	// Basic validation: 3-10 chars, alphanumeric
+	if (!/^[A-Z0-9]{3,10}$/.test(symbol)) {
+		return res.status(400).json({ error: "Invalid symbol format" });
+	}
+
+	try {
+		const snapshot = await marketDataService.getSnapshot(symbol);
+		res.json(snapshot);
+	} catch (error) {
+		res.status(500).json({
+			error: error instanceof Error ? error.message : "Failed to fetch market data",
+		});
+	}
+});
+
+app.post("/agent/debug-decision", async (req, res) => {
+	const body = req.body;
+	const { strategy, market, portfolio } = body;
+
+	if (!strategy || !market || !portfolio) {
+		return res.status(400).json({ error: "Missing strategy, market, or portfolio" });
+	}
+
+	try {
+		// 1. Get raw decision from AI (or heuristic)
+		const decisionJson = await aiAgentService.createDecision(strategy, market, portfolio);
+
+		// 2. Process signal to get exchange call
+		let decision: any;
+		try {
+			decision = JSON.parse(decisionJson);
+		} catch {
+			return res.json({
+				decision: { raw: decisionJson },
+				executionResult: { executed: false, error: "Invalid JSON from AI" },
+			});
+		}
+
+		// 3. Process Logic (Simulate Engine)
+		const executionContext = {
+			symbol: market.symbol,
+			quoteAsset: "USDT",
+			quoteBalance: portfolio.quoteBalance,
+			baseBalance: portfolio.baseBalance,
+			lastPrice: market.price,
+		};
+
+		const { exchangeCall } = processAgentSignal(decisionJson, executionContext);
+
+		// 4. Simulate Execution (Simplified)
+		let executionResult: any = { executed: false };
+
+		if (exchangeCall) {
+			const side = exchangeCall.payload.side;
+			const price = market.price;
+			const FEE = 0.001;
+
+			if (side === "BUY") {
+				const quoteQty = Number(exchangeCall.payload.quoteOrderQty || 0);
+				// Basic check against balance
+				if (quoteQty > 0 && quoteQty <= portfolio.quoteBalance) {
+					const BaseBought = (quoteQty / price) * (1 - FEE);
+					executionResult = {
+						executed: true,
+						side: "BUY",
+						spent: quoteQty,
+						received: BaseBought,
+						newPortfolio: {
+							...portfolio,
+							quoteBalance: portfolio.quoteBalance - quoteQty,
+							baseBalance: portfolio.baseBalance + BaseBought,
+						},
+					};
+				} else {
+					executionResult = { executed: false, reason: "Insufficient funds for BUY" };
+				}
+			} else if (side === "SELL") {
+				const baseQty = Number(exchangeCall.payload.quantity || 0);
+				if (baseQty > 0 && baseQty <= portfolio.baseBalance) {
+					const QuoteReceived = (baseQty * price) * (1 - FEE);
+					executionResult = {
+						executed: true,
+						side: "SELL",
+						sold: baseQty,
+						received: QuoteReceived,
+						newPortfolio: {
+							...portfolio,
+							baseBalance: portfolio.baseBalance - baseQty,
+							quoteBalance: portfolio.quoteBalance + QuoteReceived,
+						},
+					};
+				} else {
+					executionResult = { executed: false, reason: "Insufficient funds for SELL" };
+				}
+			}
+		}
+
+		return res.json({
+			decision,
+			exchangeCall,
+			executionResult,
+		});
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Failed to debug decision",
+		});
+	}
+});
+
+
+app.get("/prompts/system", (req, res) => {
+	const strategy = typeof req.query.strategy === "string"
+		? req.query.strategy
+		: "Momentum strategy with capital protection";
+
+	res.json({
+		systemPrompt: buildTradingSystemPrompt(strategy),
+	});
+});
+
+app.get("/models/featured", async (req, res) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+
+	try {
+		const limit = Math.min(20, Math.max(1, Number(req.query.limit ?? 6)));
+		const models = await accountModelsStore.listRandomModels(limit);
+		return res.json({ ok: true, models });
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Cannot list featured models",
+		});
+	}
+});
+
+app.get("/models", requireAuth, async (req: AuthedRequest, res) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+
+	try {
+		const models = await accountModelsStore.listModelsForUser(req.auth!.sub);
+		return res.json({ ok: true, models });
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Cannot list models",
+		});
+	}
+});
+
+app.post("/models", requireAuth, async (req: AuthedRequest, res) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+
+	const parsed = SaveModelSchema.safeParse(req.body);
+	if (!parsed.success) {
+		return res.status(400).json({
+			error: "Invalid payload",
+			issues: parsed.error.issues,
+		});
+	}
+
+	try {
+		const model = await accountModelsStore.upsertModelForUser({
+			walletAddress: req.auth!.sub,
+			chainId: req.auth!.chainId,
+			modelName: parsed.data.modelName,
+			prompt: parsed.data.prompt,
+			llmModel: parsed.data.llmModel || OPENAI_MODEL,
+			symbol: parsed.data.symbol || DEFAULT_SYMBOL,
+			settings: parsed.data.settings ?? {},
+		});
+
+		return res.json({
+			ok: true,
+			model,
+		});
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Cannot save model",
+		});
+	}
+});
+
+app.get("/models/:modelId/runs", requireAuth, async (req: AuthedRequest, res) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+
+	const modelId = String(req.params.modelId || "");
+	const limit = Math.min(200, Math.max(1, Number(req.query.limit ?? 20)));
+
+	if (!modelId) {
+		return res.status(400).json({ error: "modelId is required" });
+	}
+
+	try {
+		const runs = await accountModelsStore.listModelRunsForUser(req.auth!.sub, modelId, limit);
+		return res.json({ ok: true, runs });
+	} catch (error) {
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Cannot list model runs",
+		});
+	}
+});
+
+app.post("/agents/launch", requireAuth, async (req: AuthedRequest, res) => {
+	const body = req.body as Record<string, unknown>;
+	const parseResult = AgentSchema.safeParse(body);
+
+	if (!parseResult.success) {
+		return res.status(400).json({
+			error: "Invalid payload",
+			issues: parseResult.error.issues,
+		});
+	}
+
+	if (parseResult.data.playerAddress.toLowerCase() !== req.auth!.sub.toLowerCase()) {
+		return res.status(403).json({
+			error: "Authenticated wallet must match playerAddress",
+			authenticatedWallet: req.auth!.sub,
+		});
+	}
+
+	const runId = uuidv4();
+	const cycles = Number(body.cycles ?? DEFAULT_CYCLES);
+	const intervalMs = Number(body.intervalMs ?? DEFAULT_INTERVAL_MS);
+	const symbol = typeof body.symbol === "string" ? body.symbol : DEFAULT_SYMBOL;
+	const llmModel = typeof body.llmModel === "string" && body.llmModel
+		? body.llmModel
+		: OPENAI_MODEL;
+	const auth = req.auth!;
+	const launchStartedAt = Date.now();
+	let persistedModelId: string | undefined;
+
+	if (accountModelsStore.isEnabled) {
+		try {
+			const savedModel = await accountModelsStore.upsertModelForUser({
+				walletAddress: auth.sub,
+				chainId: auth.chainId,
+				modelName: parseResult.data.agentName,
+				prompt: parseResult.data.strategy,
+				llmModel,
+				symbol,
+				settings: {
+					cycles,
+					intervalMs,
+					source: "solo",
+				},
+			});
+			persistedModelId = savedModel.id;
+		} catch (error) {
+			return res.status(500).json({
+				error: error instanceof Error ? error.message : "Cannot persist model before launch",
+			});
+		}
+	}
+
+	io.emit("run:started", {
+		runId,
+		playerAddress: parseResult.data.playerAddress,
+		agentName: parseResult.data.agentName,
+		symbol,
+		cycles,
+	});
+
+	void tradingOrchestrator
+		.runSession({
+			runId,
+			agent: parseResult.data,
+			symbol,
+			cycles,
+			intervalMs,
+			io,
+		})
+		.then(async (summary) => {
+			if (!accountModelsStore.isEnabled) {
+				return;
+			}
+
+			try {
+				await accountModelsStore.recordRunForModel({
+					walletAddress: auth.sub,
+					chainId: auth.chainId,
+					modelId: persistedModelId,
+					modelName: parseResult.data.agentName,
+					prompt: parseResult.data.strategy,
+					llmModel,
+					symbol,
+					runId,
+					source: "solo",
+					pnl: summary.finalPnl,
+					roiPct: summary.roiPct,
+					tradesCount: summary.tradesCount,
+					profitableTrades: summary.profitableTrades,
+					winRatePct: summary.winRatePct,
+					cycles,
+					intervalMs,
+					startedAt: summary.startedAt || launchStartedAt,
+					endedAt: summary.endedAt,
+					meta: {
+						authenticatedWallet: auth.sub,
+					},
+				});
+			} catch (error) {
+				console.warn(
+					`[GameMaster] Failed to persist model run metrics: ${error instanceof Error ? error.message : "unknown error"}`,
+				);
+			}
+		})
+		.catch((error) => {
+			io.emit("run:error", {
+				runId,
+				message: error instanceof Error ? error.message : "Unknown run error",
+			});
+		});
+
+	return res.json({
+		ok: true,
+		runId,
+		modelId: persistedModelId ?? null,
+		symbol,
+		cycles,
+		intervalMs,
+	});
+});
+
+app.post("/agents/stop", requireAuth, async (req: AuthedRequest, res) => {
+	const playerAddress = req.auth!.sub;
+	console.log(`[GameMaster] Stopping agent for ${playerAddress}`);
+
+	try {
+		tradingOrchestrator.stopSession(playerAddress);
+
+		let finalPnl = 0;
+		let roiPct = 0;
+		try {
+			const market = await marketDataService.getSnapshot(DEFAULT_SYMBOL);
+			const portfolio = tradingOrchestrator.getPortfolio(playerAddress);
+
+			if (portfolio) {
+				const finalBnb = portfolio.baseBalance;
+				const initialBnb = portfolio.depositBnb;
+
+				if (initialBnb && initialBnb > 0.0001) {
+					const pnlBnb = finalBnb - initialBnb;
+					roiPct = (pnlBnb / initialBnb) * 100;
+					finalPnl = pnlBnb * market.price;
+
+					console.log(
+						`[GameMaster] Stop Stats: Initial=${initialBnb.toFixed(4)} BCH, Final=${finalBnb.toFixed(4)} BCH ` +
+						`→ PnL=${pnlBnb.toFixed(4)} BCH ($${finalPnl.toFixed(2)}), ROI=${roiPct.toFixed(2)}%`
+					);
+				} else {
+					finalPnl = portfolio.lastPnl ?? 0;
+				}
+			}
+		} catch (e) {
+			console.warn("[GameMaster] Could not calculate final PnL:", e);
+		}
+
+		try {
+			await leaderboardService.updateScore(playerAddress, "Agent", finalPnl);
+		} catch (e) {
+			console.warn("[GameMaster] Failed to save score:", e);
+		}
+
+		tradingOrchestrator.resetPortfolio(playerAddress);
+
+		return res.json({ ok: true, txHash: "simulated-refund", finalPnl, roiPct });
+	} catch (error: any) {
+		console.error("Stop/Refund failed:", error);
+		return res.status(500).json({ ok: false, error: error.message || "Stop/Refund failed" });
+	}
+});
+
+app.post("/tournament/start", requireAuth, (req: AuthedRequest, res) => {
+	const payload = req.body as Record<string, unknown>;
+
+	const leftParse = AgentSchema.safeParse(payload.leftAgent);
+	const rightParse = AgentSchema.safeParse(payload.rightAgent);
+
+	if (!leftParse.success || !rightParse.success) {
+		return res.status(400).json({
+			error: "leftAgent and rightAgent must match schema",
+			leftIssues: leftParse.success ? [] : leftParse.error.issues,
+			rightIssues: rightParse.success ? [] : rightParse.error.issues,
+		});
+	}
+
+	if (leftParse.data.playerAddress.toLowerCase() !== req.auth!.sub.toLowerCase()) {
+		return res.status(403).json({
+			error: "leftAgent wallet must match authenticated user",
+			authenticatedWallet: req.auth!.sub,
+		});
+	}
+
+	const durationSec = Number(payload.durationSec ?? TOURNAMENT_DURATION_SEC);
+	const tickSec = Number(payload.tickSec ?? TOURNAMENT_TICK_SEC);
+	const symbol = typeof payload.symbol === "string" ? payload.symbol : DEFAULT_SYMBOL;
+
+	try {
+		const tournament = tournamentService.startTournament(
+			{
+				agents: [leftParse.data, rightParse.data],
+				durationSec,
+				tickSec,
+				symbol,
+			},
+			io,
+		);
+
+		return res.json({
+			ok: true,
+			...tournament,
+			durationSec,
+			tickSec,
+			symbol,
+		});
+	} catch (error) {
+		return res.status(409).json({
+			ok: false,
+			error: error instanceof Error ? error.message : "Cannot start tournament",
+		});
+	}
+});
+
+io.on("connection", (socket) => {
+	socket.emit("server:ready", {
+		message: "Connected to AI Battles GameMaster",
+	});
+});
+
+httpServer.listen(PORT, () => {
+	console.log(`[GameMaster] listening on :${PORT}`);
+	console.log(`[GameMaster] mode: ${leaderboardService.storageMode}`);
+	console.log(`[GameMaster] oracle: ${leaderboardService.oracleAddress}`);
+	console.log(`[GameMaster] supabase: ${leaderboardService.isSupabaseEnabled ? "enabled" : "disabled"}`);
+	console.log(`[GameMaster] account models: ${accountModelsStore.isEnabled ? "enabled" : "disabled"}`);
+	if (SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_DEFAULT_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+		console.warn("[GameMaster] Using SUPABASE_PUBLISHABLE_DEFAULT_KEY on server. Prefer SUPABASE_SERVICE_ROLE_KEY for trusted writes.");
+	}
+	console.log(`[GameMaster] frontend origin: ${FRONTEND_ORIGIN}`);
+});
+// Force restart Wed Feb 18 03:19:53 CET 2026
+// Force restart Wed Feb 18 03:25:04 CET 2026
+// Force restart Wed Feb 18 05:29:20 CET 2026
+// Force restart Wed Feb 18 05:44:30 CET 2026
+// Force restart Wed Feb 18 05:52:47 CET 2026

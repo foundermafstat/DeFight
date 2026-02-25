@@ -1,0 +1,25 @@
+{
+  "name": "defight",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Battles MVP monorepo: Web dashboard, execution engine, game server, and BNB Testnet contracts",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @aibattles/web run dev",
+    "dev:server": "npm run build:engine && npm --workspace @aibattles/gamemaster run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "build:engine": "npm --workspace @aibattles/engine run build",
+    "build:sdk": "npm --workspace @aibattles/sdk run build",
+    "build:gm": "npm --workspace @aibattles/gamemaster run build",
+    "build:web": "npm --workspace @aibattles/web run build",
+    "build": "npm run build:engine && npm run build:sdk && npm run build:gm && npm run build:web",
+    "test:engine": "npm --workspace @aibattles/engine run test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "license": "MIT"
+}
