@@ -2,234 +2,259 @@ import type { TestNetWallet as TestNetWalletType } from 'mainnet-js';
 import { FilebaseService } from './FilebaseService';
 
 export class BchService {
-    private wallet: TestNetWalletType | null = null;
-    private seedPhrase: string;
-    private filebaseService: FilebaseService;
+	private wallet: TestNetWalletType | null = null;
+	private seedPhrase: string;
+	private filebaseService: FilebaseService;
 
-    private readyPromise: Promise<void>;
+	private readyPromise: Promise<void>;
 
-    constructor(seedPhrase: string) {
-        this.seedPhrase = seedPhrase;
-        this.filebaseService = new FilebaseService();
-        this.readyPromise = this.init();
-    }
+	constructor(seedPhrase: string) {
+		this.seedPhrase = seedPhrase;
+		this.filebaseService = new FilebaseService();
+		this.readyPromise = this.init();
+	}
 
-    /**
-     * Wait for the service to be fully initialized and wallet prepared.
-     */
-    public async waitForReady() {
-        await this.readyPromise;
-    }
-    private async init() {
-        const { TestNetWallet } = await eval('import("mainnet-js")');
-        try {
-            this.wallet = await TestNetWallet.fromSeed(this.seedPhrase, "m/44'/145'/0'/0/0");
-        } catch (error) {
-            console.warn(`[BchService] Error initializing from seed. Generating a random Testnet oracle wallet instead...`, error);
-            this.wallet = await TestNetWallet.newRandom();
-        }
+	/**
+	 * Wait for the service to be fully initialized and wallet prepared.
+	 */
+	public async waitForReady() {
+		await this.readyPromise;
+	}
+	private async init() {
+		const { TestNetWallet } = await eval('import("mainnet-js")');
+		try {
+			this.wallet = await TestNetWallet.fromSeed(this.seedPhrase, "m/44'/145'/0'/0/0");
+		} catch (error) {
+			console.warn(`[BchService] Error initializing from seed. Generating a random Testnet oracle wallet instead...`, error);
+			this.wallet = await TestNetWallet.newRandom();
+		}
 
-        if (!this.wallet) return;
-        console.log(`BCH Oracle Wallet Address: ${this.wallet.cashaddr}`);
+		if (!this.wallet) return;
+		console.log(`BCH Oracle Wallet Address: ${this.wallet.cashaddr}`);
 
-        // Ensure we have a UTXO with vout=0, required for tokenGenesis in mainnet-js
-        await this.prepareVout0();
-    }
+		// Ensure we have a UTXO with vout=0, required for tokenGenesis in mainnet-js
+		await this.prepareVout0();
+	}
 
-    private async prepareVout0() {
-        if (!this.wallet) return;
+	/**
+	 * Checks if any non-token UTXO with vout=0 exists.
+	 */
+	private hasVout0(utxos: any[]): boolean {
+		return utxos.some((u: any) => u.vout === 0 && !u.token);
+	}
 
-        try {
-            let utxos = await this.wallet.getUtxos();
-            if (utxos.length === 0) {
-                console.warn("[BchService] Wallet has no UTXOs. Cannot prepare vout=0.");
-                return;
-            }
-            if (!utxos.some((u: any) => u.vout === 0)) {
-                console.log("[BchService] Creating vout=0 UTXO via self-send...");
-                const selfSend = await this.wallet.send([
-                    {
-                        cashaddr: this.wallet.cashaddr!,
-                        value: 1200,
-                        unit: 'sats'
-                    } as any
-                ]);
-                console.log(`[BchService] Self-send txId: ${selfSend.txId}`);
+	/**
+	 * Creates a vout=0 UTXO by sending the entire wallet balance to self via sendMax.
+	 * sendMax produces a single output at vout=0 which is exactly what tokenGenesis requires.
+	 * Falls back to a regular self-send if sendMax fails.
+	 */
+	private async prepareVout0(): Promise<boolean> {
+		if (!this.wallet) return false;
 
-                // Retry loop: wait for electrum indexer to pick up the new UTXO
-                for (let attempt = 0; attempt < 5; attempt++) {
-                    await new Promise(r => setTimeout(r, 3000));
-                    utxos = await this.wallet.getUtxos();
-                    const hasVout0 = utxos.some((u: any) => u.vout === 0);
-                    console.log(`[BchService] vout=0 check attempt ${attempt + 1}: UTXOs=${utxos.length}, hasVout0=${hasVout0}`);
-                    if (hasVout0) break;
-                }
-            } else {
-                console.log("[BchService] Wallet already has a vout=0 UTXO ✓");
-            }
-        } catch (e) {
-            console.warn("[BchService] Could not prepare vout=0 UTXO:", e);
-        }
-    }
+		try {
+			let utxos = await this.wallet.getUtxos();
+			if (utxos.length === 0) {
+				console.warn("[BchService] Wallet has no UTXOs. Cannot prepare vout=0.");
+				return false;
+			}
 
-    /**
-     * Mints a CashToken NFT for a successful AI bot.
-     * The generative metadata (image, stats) is uploaded to Filebase IPFS.
-     * The text prompt remains hidden off-chain.
-     * 
-     * @param destinationAddress The builder's BCH Testnet address (e.g. bchtest:...)
-     * @param botName Short string representing the bot
-     * @param generation The generation number of this bot
-     * @param initialWinRate Initial percentage encoded for early display
-     * @param nftMetadata Additional generative metadata (e.g., image URL, traits)
-     * @returns Object containing the tokenId, genesis txId, and IPFS URI
-     */
-    public async mintBotNft(
-        destinationAddress: string,
-        botName: string,
-        generation: number,
-        initialWinRate: string,
-        nftMetadata: any = {}
-    ) {
-        await this.waitForReady();
-        if (!this.wallet) throw new Error("Wallet not initialized");
+			if (this.hasVout0(utxos)) {
+				console.log("[BchService] Wallet already has a vout=0 UTXO ✓");
+				return true;
+			}
 
-        // Final check for vout=0 before genesis
-        await this.prepareVout0();
+			console.log("[BchService] No vout=0 UTXO found. Creating one via sendMax to self...");
 
-        // 1. Upload generative NFT metadata to Filebase IPFS
-        const fullMetadata = {
-            name: botName,
-            description: `DeFight Generative AI Bot - Gen ${generation}`,
-            attributes: [
-                { trait_type: "Generation", value: generation },
-                { trait_type: "Initial Win Rate", value: initialWinRate },
-                ...(nftMetadata.attributes || [])
-            ],
-            image: nftMetadata.image || "",
-            // Add any other standard NFT properties
-        };
+			// Strategy 1: sendMax to self — produces exactly one output at vout=0
+			try {
+				const selfSend = await this.wallet.sendMax(this.wallet.cashaddr!);
+				console.log(`[BchService] sendMax self-send txId: ${selfSend.txId}`);
+			} catch (e: any) {
+				console.warn("[BchService] sendMax failed, trying regular self-send:", e?.message);
+				// Strategy 2: regular self-send with a small amount
+				const selfSend = await this.wallet.send([
+					{
+						cashaddr: this.wallet.cashaddr!,
+						value: 1200,
+						unit: 'sats'
+					} as any
+				]);
+				console.log(`[BchService] Regular self-send txId: ${selfSend.txId}`);
+			}
 
-        console.log("Uploading Generative NFT metadata to Filebase IPFS...");
-        const { cid, uri } = await this.filebaseService.uploadMetadata(fullMetadata);
-        console.log(`Metadata uploaded! IPFS CID: ${cid}`);
+			// Retry loop: wait for electrum indexer to pick up the new UTXO
+			for (let attempt = 0; attempt < 8; attempt++) {
+				await new Promise(r => setTimeout(r, 2000));
+				utxos = await this.wallet.getUtxos();
+				const hasVout0 = this.hasVout0(utxos);
+				console.log(`[BchService] vout=0 check attempt ${attempt + 1}/8: UTXOs=${utxos.length}, hasVout0=${hasVout0}`);
+				if (hasVout0) return true;
+			}
 
-        // 2. Token Genesis (The commitment is limited to 40 bytes)
-        const commitmentPayload = `DeFight|${botName}|Gen:${generation}`;
+			console.warn("[BchService] Could not obtain vout=0 UTXO after retries");
+			return false;
+		} catch (e) {
+			console.warn("[BchService] Could not prepare vout=0 UTXO:", e);
+			return false;
+		}
+	}
 
-        // Create the token with 0 fungible amount. Implicitly creates an NFT.
-        const response = await this.wallet.tokenGenesis({
-            amount: 0n,
-            nft: {
-                capability: "none",
-                commitment: commitmentPayload,
-            },
-            cashaddr: destinationAddress
-        });
+	/**
+	 * Mints a CashToken NFT for a successful AI bot.
+	 * The generative metadata (image, stats) is uploaded to Filebase IPFS.
+	 * The text prompt remains hidden off-chain.
+	 * 
+	 * @param destinationAddress The builder's BCH Testnet address (e.g. bchtest:...)
+	 * @param botName Short string representing the bot
+	 * @param generation The generation number of this bot
+	 * @param initialWinRate Initial percentage encoded for early display
+	 * @param nftMetadata Additional generative metadata (e.g., image URL, traits)
+	 * @returns Object containing the tokenId, genesis txId, and IPFS URI
+	 */
+	public async mintBotNft(
+		destinationAddress: string,
+		botName: string,
+		generation: number,
+		metadata: any
+	) {
+		await this.waitForReady();
+		if (!this.wallet) throw new Error("Wallet not initialized");
 
-        console.log(`Minted DeFight Bot NFT! Token ID: ${response.txId}`);
+		// Ensure we have a vout=0 UTXO before genesis — required by CashTokens protocol
+		const vout0Ready = await this.prepareVout0();
+		if (!vout0Ready) {
+			// Double-check one more time after a longer delay
+			await new Promise(r => setTimeout(r, 5000));
+			const utxos = await this.wallet.getUtxos();
+			if (!this.hasVout0(utxos)) {
+				throw new Error(
+					"Cannot mint NFT: wallet has no UTXO with vout=0 after multiple attempts. " +
+					"This is required by the CashTokens protocol for token genesis. " +
+					"Please ensure the oracle wallet has sufficient tBCH balance and try again."
+				);
+			}
+		}
 
-        // 3. Anchor the IPFS CID to the Token ID via OP_RETURN
-        // This ensures the generative metadata is permanently linked on-chain.
-        const payloadBuffer = Buffer.from(
-            `DeFight_NFT | TokenID: ${response.txId} | IPFS: ${cid}`,
-            'utf-8'
-        );
+		console.log("Uploading Generative NFT metadata to Filebase IPFS...");
+		const { cid, uri } = await this.filebaseService.uploadMetadata(metadata);
+		console.log(`Metadata uploaded! IPFS CID: ${cid}`);
 
-        const { OpReturnData } = await eval('import("mainnet-js")');
+		// 2. Token Genesis (The commitment is limited to 40 bytes)
+		const commitmentPayload = `DeFight|${botName}|Gen:${generation}`;
 
-        const anchorTx = await this.wallet.send([
-            OpReturnData.fromArray([payloadBuffer])
-        ]);
+		// Create the token with 0 fungible amount. Implicitly creates an NFT.
+		const response = await this.wallet.tokenGenesis({
+			amount: 0n,
+			nft: {
+				capability: "none",
+				commitment: commitmentPayload,
+			},
+			cashaddr: destinationAddress
+		});
 
-        console.log(`Anchored IPFS CID on-chain: ${anchorTx.txId}`);
+		console.log(`Minted DeFight Bot NFT! Token ID: ${response.txId}`);
 
-        return {
-            tokenId: response.txId!,
-            txId: response.txId,
-            anchorTxId: anchorTx.txId,
-            ipfsUri: uri
-        };
-    }
+		// 3. Anchor the IPFS CID to the Token ID via OP_RETURN
+		// This ensures the generative metadata is permanently linked on-chain.
+		const payloadBuffer = Buffer.from(
+			`DeFight_NFT | TokenID: ${response.txId} | IPFS: ${cid}`,
+			'utf-8'
+		);
 
-    /**
-     * Anchors leaderboard data immutably to the blockchain using OP_RETURN.
-     * 
-     * @param tokenId The target NFT CashToken ID
-     * @param pnl The percentage string (e.g., +45%)
-     * @param wins Total wins to log
-     * @returns The transaction ID
-     */
-    public async recordLeaderboardEntry(tokenId: string, pnl: string, wins: number) {
-        if (!this.wallet) throw new Error("Wallet not initialized");
+		const { OpReturnData } = await eval('import("mainnet-js")');
 
-        // Max roughly 220 bytes. We keep it concise.
-        const payloadBuffer = Buffer.from(
-            `DeFight_Leaderboard | TokenID: ${tokenId} | PnL: ${pnl} | Wins: ${wins}`,
-            'utf-8'
-        );
+		const anchorTx = await this.wallet.send([
+			OpReturnData.fromArray([payloadBuffer])
+		]);
 
-        // Send an OP_RETURN data output.
-        const { OpReturnData } = await eval('import("mainnet-js")');
-        const response = await this.wallet.send([
-            OpReturnData.fromArray([payloadBuffer])
-        ]);
+		console.log(`Anchored IPFS CID on-chain: ${anchorTx.txId}`);
 
-        console.log(`Leaderboard anchor Tx: ${response.txId}`);
-        return response.txId;
-    }
+		return {
+			tokenId: response.txId!,
+			txId: response.txId,
+			anchorTxId: anchorTx.txId,
+			ipfsUri: uri
+		};
+	}
 
-    /**
-     * Verifies if a user's address owns a specific CashToken NFT.
-     * Critical for allowing access to premium battles.
-     * 
-     * @param userAddress The user's BCH Testnet address
-     * @param targetTokenId The CashToken NFT ID they claim to own
-     * @returns Boolean indicating ownership
-     */
-    public async verifyNftOwnership(userAddress: string, targetTokenId: string): Promise<boolean> {
-        // We can use a Watch-only wallet to easily query the network.
-        const { TestNetWallet } = await eval('import("mainnet-js")');
-        const watchWallet = await TestNetWallet.watchOnly(userAddress);
+	/**
+	 * Anchors leaderboard data immutably to the blockchain using OP_RETURN.
+	 * 
+	 * @param tokenId The target NFT CashToken ID
+	 * @param pnl The percentage string (e.g., +45%)
+	 * @param wins Total wins to log
+	 * @returns The transaction ID
+	 */
+	public async recordLeaderboardEntry(tokenId: string, pnl: string, wins: number) {
+		if (!this.wallet) throw new Error("Wallet not initialized");
 
-        // Retrieve all token UTXOs owned by this address
-        const tokenUtxos = await watchWallet.getTokenUtxos();
+		// Max roughly 220 bytes. We keep it concise.
+		const payloadBuffer = Buffer.from(
+			`DeFight_Leaderboard | TokenID: ${tokenId} | PnL: ${pnl} | Wins: ${wins}`,
+			'utf-8'
+		);
 
-        // Check if the target Token ID exists in their UTXO set
-        return tokenUtxos.some((u: any) => u.token?.tokenId === targetTokenId);
-    }
+		// Send an OP_RETURN data output.
+		const { OpReturnData } = await eval('import("mainnet-js")');
+		const response = await this.wallet.send([
+			OpReturnData.fromArray([payloadBuffer])
+		]);
 
-    /**
-     * Executes the tournament settlement. The GameMaster wallet 
-     * transfers the staked tBCH and the loser's NFT to the winner.
-     * 
-     * @param winnerAddress The testnet BCH address of the winner
-     * @param loserTokenId The NFT TokenId of the loser to be transferred
-     * @param totalTbchPool The total tBCH staked to send (minus fees)
-     */
-    public async payoutTournamentWinner(winnerAddress: string, loserTokenId: string, totalTbchPool: number) {
-        if (!this.wallet) throw new Error("Wallet not initialized");
+		console.log(`Leaderboard anchor Tx: ${response.txId}`);
+		return response.txId;
+	}
 
-        console.log(`[Escrow] Paying out ${totalTbchPool} tBCH and NFT ${loserTokenId} to ${winnerAddress}...`);
+	/**
+	 * Verifies if a user's address owns a specific CashToken NFT.
+	 * Critical for allowing access to premium battles.
+	 * 
+	 * @param userAddress The user's BCH Testnet address
+	 * @param targetTokenId The CashToken NFT ID they claim to own
+	 * @returns Boolean indicating ownership
+	 */
+	public async verifyNftOwnership(userAddress: string, targetTokenId: string): Promise<boolean> {
+		// We can use a Watch-only wallet to easily query the network.
+		const { TestNetWallet } = await eval('import("mainnet-js")');
+		const watchWallet = await TestNetWallet.watchOnly(userAddress);
 
-        try {
-            // Note: For a real mainnet-js implementation, we would construct
-            // a multi-output transaction. `send` handles the NFT and BCH.
-            const { OpReturnData } = await eval('import("mainnet-js")');
-            const txResponse = await this.wallet.send([
-                {
-                    cashaddr: winnerAddress,
-                    value: totalTbchPool,
-                    unit: 'sats'
-                },
-                OpReturnData.fromArray([Buffer.from(`DeFight Tournament Payout`, 'utf-8')])
-            ] as any);
+		// Retrieve all token UTXOs owned by this address
+		const tokenUtxos = await watchWallet.getTokenUtxos();
 
-            console.log(`[Escrow] Payout TxId: ${txResponse.txId}`);
-            return txResponse.txId;
-        } catch (error) {
-            console.error("[Escrow] Error during payout:", error);
-            throw new Error("Escrow payout failed");
-        }
-    }
+		// Check if the target Token ID exists in their UTXO set
+		return tokenUtxos.some((u: any) => u.token?.tokenId === targetTokenId);
+	}
+
+	/**
+	 * Executes the tournament settlement. The GameMaster wallet 
+	 * transfers the staked tBCH and the loser's NFT to the winner.
+	 * 
+	 * @param winnerAddress The testnet BCH address of the winner
+	 * @param loserTokenId The NFT TokenId of the loser to be transferred
+	 * @param totalTbchPool The total tBCH staked to send (minus fees)
+	 */
+	public async payoutTournamentWinner(winnerAddress: string, loserTokenId: string, totalTbchPool: number) {
+		if (!this.wallet) throw new Error("Wallet not initialized");
+
+		console.log(`[Escrow] Paying out ${totalTbchPool} tBCH and NFT ${loserTokenId} to ${winnerAddress}...`);
+
+		try {
+			// Note: For a real mainnet-js implementation, we would construct
+			// a multi-output transaction. `send` handles the NFT and BCH.
+			const { OpReturnData } = await eval('import("mainnet-js")');
+			const txResponse = await this.wallet.send([
+				{
+					cashaddr: winnerAddress,
+					value: totalTbchPool,
+					unit: 'sats'
+				},
+				OpReturnData.fromArray([Buffer.from(`DeFight Tournament Payout`, 'utf-8')])
+			] as any);
+
+			console.log(`[Escrow] Payout TxId: ${txResponse.txId}`);
+			return txResponse.txId;
+		} catch (error) {
+			console.error("[Escrow] Error during payout:", error);
+			throw new Error("Escrow payout failed");
+		}
+	}
 }

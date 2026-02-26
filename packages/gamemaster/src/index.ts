@@ -109,6 +109,7 @@ const LoginRequestSchema = z.object({
 
 const SaveModelSchema = z.object({
 	modelName: z.string().min(2).max(80),
+	description: z.string().max(500).optional(),
 	prompt: z.string().min(10).max(8000),
 	llmModel: z.string().min(2).max(120).optional(),
 	symbol: z.string().min(4).max(24).optional(),
@@ -436,6 +437,7 @@ app.post("/models", requireAuth, async (req: AuthedRequest, res) => {
 			walletAddress: req.auth!.sub,
 			chainId: req.auth!.chainId,
 			modelName: parsed.data.modelName,
+			description: parsed.data.description,
 			prompt: parsed.data.prompt,
 			llmModel: parsed.data.llmModel || OPENAI_MODEL,
 			symbol: parsed.data.symbol || DEFAULT_SYMBOL,
@@ -599,16 +601,58 @@ app.post('/models/:modelId/mint', requireAuth, async (req: AuthedRequest, res: R
 			return res.status(400).json({ error: "Model is already minted", tokenId: model.settings_json.tokenId });
 		}
 
-		const initialWinRate = model.total_runs ? ((model.profitable_trades / model.total_trades) * 100).toFixed(2) + "%" : "0%";
-		const generation = model.total_runs || 1;
+		// Fetch run history for chart data
+		const runs = await accountModelsStore.listModelRunsForUser(req.auth!.sub, modelId, 50);
+		const { generateChartImage } = await import('./services/ChartImageService');
 
-		// Mint the CashToken NFT server-side using ESCROW wallet
+		const chartPoints: { label: string; value: number; }[] = runs.length > 0
+			? runs.reverse().map((r, i) => ({ label: `Run ${i + 1}`, value: r.pnl }))
+			: [{ label: '0', value: 0 }, { label: '1', value: model.last_pnl ?? 0 }];
+
+		// Generate chart image
+		console.log(`[Mint] Generating PnL chart for model ${model.model_name}...`);
+		const chartBuffer = await generateChartImage(chartPoints);
+
+		// Upload chart image to IPFS
+		const filebaseService = new (await import('./services/FilebaseService')).FilebaseService();
+		const chartFilename = `defight-chart-${modelId.slice(0, 8)}-${Date.now()}.${chartBuffer.toString('utf-8').startsWith('<svg') ? 'svg' : 'png'}`;
+		const chartUpload = await filebaseService.uploadImage(chartBuffer, chartFilename);
+		console.log(`[Mint] Chart uploaded to IPFS: ${chartUpload.uri}`);
+
+		// Compute aggregate stats
+		const totalRuns = model.total_runs ?? 0;
+		const totalTrades = model.total_trades ?? 0;
+		const profitableTrades = model.profitable_trades ?? 0;
+		const winRate = totalTrades > 0 ? ((profitableTrades / totalTrades) * 100).toFixed(2) : '0.00';
+		const bestRoi = model.best_roi_pct ?? 0;
+		const avgRoi = model.average_roi_pct ?? 0;
+		const bestPnl = model.best_pnl ?? model.last_pnl ?? 0;
+		const lastPnl = model.last_pnl ?? 0;
+		const generation = totalRuns || 1;
+
+		// Build rich IPFS metadata — prompt is NOT included
+		const nftMetadata = {
+			name: model.model_name,
+			description: model.description || `DeFight AI Trading Bot`,
+			image: chartUpload.uri,
+			model_id: modelId,
+			attributes: [
+				{ trait_type: "Generation", value: generation },
+				{ trait_type: "Best PnL", value: `${bestPnl >= 0 ? '+' : ''}${Number(bestPnl).toFixed(2)} USDT` },
+				{ trait_type: "Best ROI", value: `${bestRoi >= 0 ? '+' : ''}${Number(bestRoi).toFixed(2)}%` },
+				{ trait_type: "Average ROI", value: `${avgRoi >= 0 ? '+' : ''}${Number(avgRoi).toFixed(2)}%` },
+				{ trait_type: "Total Runs", value: totalRuns },
+				{ trait_type: "Total Trades", value: totalTrades },
+				{ trait_type: "Win Rate", value: `${winRate}%` },
+			],
+		};
+
+		// Mint the CashToken NFT
 		const mintResult = await bchService.mintBotNft(
 			req.auth!.sub,
 			model.model_name,
 			generation,
-			initialWinRate,
-			{ traits: ["Pioneer"] }
+			nftMetadata
 		);
 
 		// Save tokenId to Supabase model settings
@@ -799,17 +843,16 @@ app.post("/agents/stop", requireAuth, async (req: AuthedRequest, res) => {
 			const portfolio = tradingOrchestrator.getPortfolio(playerAddress);
 
 			if (portfolio) {
-				const finalBCH = portfolio.baseBalance;
-				const initialBCH = portfolio.depositBCH;
+				const finalUSDT = portfolio.quoteBalance + (portfolio.baseBalance * market.price);
+				const initialUSDT = portfolio.depositUSDT || 1000;
 
-				if (initialBCH && initialBCH > 0.0001) {
-					const pnlBCH = finalBCH - initialBCH;
-					roiPct = (pnlBCH / initialBCH) * 100;
-					finalPnl = pnlBCH * market.price;
+				if (initialUSDT > 0) {
+					finalPnl = finalUSDT - initialUSDT;
+					roiPct = (finalPnl / initialUSDT) * 100;
 
 					console.log(
-						`[GameMaster] Stop Stats: Initial=${initialBCH.toFixed(4)} BCH, Final=${finalBCH.toFixed(4)} BCH ` +
-						`→ PnL=${pnlBCH.toFixed(4)} BCH ($${finalPnl.toFixed(2)}), ROI=${roiPct.toFixed(2)}%`
+						`[GameMaster] Stop Stats: Initial=${initialUSDT.toFixed(2)} USDT, Final=${finalUSDT.toFixed(2)} USDT ` +
+						`→ PnL=$${finalPnl.toFixed(2)}, ROI=${roiPct.toFixed(2)}%`
 					);
 				} else {
 					finalPnl = portfolio.lastPnl ?? 0;
@@ -827,10 +870,10 @@ app.post("/agents/stop", requireAuth, async (req: AuthedRequest, res) => {
 
 		tradingOrchestrator.resetPortfolio(playerAddress);
 
-		return res.json({ ok: true, txHash: "simulated-refund", finalPnl, roiPct });
+		return res.json({ ok: true, finalPnl, roiPct });
 	} catch (error: any) {
-		console.error("Stop/Refund failed:", error);
-		return res.status(500).json({ ok: false, error: error.message || "Stop/Refund failed" });
+		console.error("Stop failed:", error);
+		return res.status(500).json({ ok: false, error: error.message || "Stop failed" });
 	}
 });
 

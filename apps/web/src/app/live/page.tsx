@@ -17,17 +17,14 @@ import {
 	Terminal,
 	Activity,
 	Trophy,
-	Wallet,
 	Cpu,
 	Globe,
 	Zap,
-	ArrowUpRight,
 	ExternalLink,
 	Loader2,
 	X,
 } from "lucide-react";
 import { useGame, formatClock, formatDate, shortAddress } from "@/context/GameContext";
-import { useRouter } from "next/navigation";
 import { runSafeAction } from "@/lib/safe-action";
 import { LiveTicker } from "@/components/ui/LiveTicker";
 
@@ -56,15 +53,14 @@ export default function LivePage() {
 		finalRoiPct,
 		sessions,
 		activeRunId,
-		setActiveRunId,
 		mintPromptModel
 	} = useGame();
 
-	const router = useRouter();
+
 	const [isStopping, setIsStopping] = useState(false);
 	const [stopResult, setStopResult] = useState<StopResult | null>(null);
 	const [isMinting, setIsMinting] = useState(false);
-	const [mintResult, setMintResult] = useState<{ txHash?: string, ipfsUri?: string } | null>(null);
+	const [mintResult, setMintResult] = useState<{ txHash?: string, ipfsUri?: string; } | null>(null);
 
 	const handleStop = async () => {
 		setIsStopping(true);
@@ -106,34 +102,6 @@ export default function LivePage() {
 							</div>
 						</div>
 
-						{/* Active Sessions List */}
-						<div className="flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right pb-1">
-							{Object.values(sessions).map((session) => (
-								<Button
-									key={session.runId}
-									variant={activeRunId === session.runId ? "default" : "outline"}
-									size="sm"
-									onClick={() => setActiveRunId(session.runId)}
-									className={`h-8 font-mono text-[10px] px-4 rounded-full border-white/10 ${activeRunId === session.runId
-										? "bg-[#0AC18E] text-black hover:bg-[#cda460]"
-										: "bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10"
-										}`}
-								>
-									{session.isActive && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse mr-2" />}
-									{!session.isActive && <div className="h-1.5 w-1.5 rounded-full bg-neutral-500 mr-2" />}
-									{session.agentName}
-								</Button>
-							))}
-
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => router.push("/forge")}
-								className="h-8 font-mono text-[10px] px-3 rounded-full border-white/10 bg-transparent text-[#0AC18E] hover:bg-[#0AC18E]/10 ml-2 border-dashed"
-							>
-								+ New Agent
-							</Button>
-						</div>
 					</div>
 
 					<section className="flex-1 min-h-0 grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_300px] xl:grid-cols-[280px_1fr_320px]">
@@ -155,33 +123,40 @@ export default function LivePage() {
 									</div>
 
 									<div className="grid grid-cols-1 gap-2">
-										{/* PnL block: shows live estimate during session, final after stop */}
+										{/* PnL block */}
 										<div className="rounded-lg border border-white/5 bg-white/5 p-3">
 											{agentStopped && finalPnl !== null ? (
 												<>
-													<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">Final PnL ✓</p>
+													<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">PnL ✓</p>
 													<p className={`font-mono text-lg font-bold ${finalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-														{finalPnl >= 0 ? '+' : ''}{finalPnl?.toFixed(4)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
+														{finalPnl >= 0 ? '+' : ''}{finalPnl?.toFixed(2)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
 													</p>
 												</>
 											) : (
 												<>
-													<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">Live PnL <span className="text-neutral-600 normal-case font-normal">(est.)</span></p>
+													<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">PnL <span className="text-neutral-600 normal-case font-normal">(est.)</span></p>
 													<p className={`font-mono text-lg font-bold ${portfolio.pnl >= 0 ? 'text-[#0AC18E]' : 'text-rose-400'}`}>
 														{portfolio.pnl >= 0 ? '+' : ''}{portfolio.pnl.toFixed(2)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
 													</p>
 												</>
 											)}
 										</div>
-										{/* ROI block (only after final stop) */}
-										{agentStopped && finalRoiPct !== null && (
-											<div className="rounded-lg border border-white/5 bg-white/5 p-3">
-												<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">Final ROI ✓</p>
-												<p className={`font-mono text-lg font-bold ${finalRoiPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-													{finalRoiPct >= 0 ? '+' : ''}{finalRoiPct?.toFixed(2)}%
-												</p>
-											</div>
-										)}
+										{/* ROI block */}
+										<div className="rounded-lg border border-white/5 bg-white/5 p-3">
+											{agentStopped && finalRoiPct !== null ? (
+												<>
+													<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">ROI ✓</p>
+													<p className={`font-mono text-lg font-bold ${finalRoiPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+														{finalRoiPct >= 0 ? '+' : ''}{finalRoiPct?.toFixed(2)}%
+													</p>
+												</>
+											) : (
+												<>
+													<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">ROI <span className="text-neutral-600 normal-case font-normal">(est.)</span></p>
+													<p className="font-mono text-lg font-bold text-neutral-500">--</p>
+												</>
+											)}
+										</div>
 										<div className="rounded-lg border border-white/5 bg-white/5 p-3">
 											<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">Liquidity</p>
 											<div className="flex flex-col gap-0.5">
@@ -193,11 +168,6 @@ export default function LivePage() {
 												</p>
 											</div>
 										</div>
-
-										<div className="rounded-lg border border-white/5 bg-white/5 p-3 flex items-center justify-between">
-											<p className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-0.5">BCH/USDT</p>
-										</div>
-										<Activity className="h-4 w-4 text-neutral-600" />
 									</div>
 								</div>
 
@@ -214,10 +184,6 @@ export default function LivePage() {
 										<Trophy className="mr-2 h-3 w-3" />
 										{agentStopped ? "Commit Log" : "Stop First"}
 									</Button>
-									<Button type="button" variant="outline" className="w-full border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10 hover:text-white uppercase tracking-wider text-xs h-8" onClick={() => router.push("/arena")}>
-										View Arena
-										<ArrowUpRight className="ml-2 h-3 w-3" />
-									</Button>
 									<Button
 										type="button"
 										variant="destructive"
@@ -231,7 +197,7 @@ export default function LivePage() {
 												Stopping...
 											</>
 										) : (
-											"Stop & Refund"
+											"Stop & Create NFT"
 										)}
 									</Button>
 								</div>
@@ -283,15 +249,6 @@ export default function LivePage() {
 												<div key={`${log.timestamp}-${idx}`} className="flex gap-2 text-neutral-300 hover:bg-white/5 p-1 rounded transition-colors group items-start">
 													<span className="text-neutral-600 shrink-0 select-none">[{formatClock(log.timestamp)}]</span>
 													<span className="group-hover:text-[#0AC18E] transition-colors flex-1 break-all">{log.message}</span>
-													{log.txHash && (
-														<a
-															href={`${EXPLORER_BASE}${log.txHash}`}
-															target="_blank"
-															title="View transaction on Chipnet Explorer"
-														>
-															<ExternalLink className="h-3 w-3" />
-														</a>
-													)}
 												</div>
 											))}
 										</div>
@@ -367,7 +324,7 @@ export default function LivePage() {
 									<div className="p-3 border-b border-white/5 flex items-center justify-between shrink-0">
 										<div className="flex items-center gap-2 text-white">
 											<Globe className="h-3.5 w-3.5 text-[#0AC18E]" />
-											<h3 className="font-display text-xs font-bold uppercase tracking-wide">Global Rankings</h3>
+											<h3 className="font-display text-xs font-bold uppercase tracking-wide">Active Models</h3>
 										</div>
 										<div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
 									</div>
@@ -444,9 +401,9 @@ export default function LivePage() {
 								{/* Stats */}
 								<div className="space-y-3 mb-6">
 									<div className="rounded-lg border border-white/5 bg-white/5 p-4 flex items-center justify-between">
-										<span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Final PnL</span>
+										<span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">PnL</span>
 										<span className={`font-mono text-xl font-bold ${stopResult.finalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-											{stopResult.finalPnl >= 0 ? '+' : ''}{stopResult.finalPnl?.toFixed(4)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
+											{stopResult.finalPnl >= 0 ? '+' : ''}{stopResult.finalPnl?.toFixed(2)} <span className="text-xs text-neutral-500 font-normal">USDT</span>
 										</span>
 									</div>
 
@@ -457,20 +414,6 @@ export default function LivePage() {
 										</span>
 									</div>
 
-									{stopResult.txHash && (
-										<div className="rounded-lg border border-white/5 bg-white/5 p-4">
-											<p className="text-xs uppercase tracking-wider text-neutral-500 font-bold mb-2">Refund Transaction</p>
-											<a
-												href={`${EXPLORER_BASE}${stopResult.txHash}`}
-												target="_blank"
-												rel="noopener noreferrer"
-												className="flex items-center gap-2 text-[#0AC18E] hover:text-[#f0d49a] transition-colors font-mono text-xs"
-											>
-												{stopResult.txHash.slice(0, 10)}...{stopResult.txHash.slice(-8)}
-												<ExternalLink className="h-3 w-3" />
-											</a>
-										</div>
-									)}
 								</div>
 
 								{/* Mint NFT Option */}

@@ -30,8 +30,8 @@ export type ActiveSession = {
 	symbol: string;
 	isActive: boolean;
 	soloLogs: LiveLog[];
-	liveSeries: Array<{ time: string; pnl: number }>;
-	portfolio: { quoteBalance: number; baseBalance: number; pnl: number };
+	liveSeries: Array<{ time: string; pnl: number; }>;
+	portfolio: { quoteBalance: number; baseBalance: number; pnl: number; };
 	finalPnl: number | null;
 	finalRoiPct: number | null;
 	marketPrice: number | null;
@@ -67,6 +67,7 @@ export type AuthProfile = {
 export type SavedPromptModel = {
 	id: string;
 	modelName: string;
+	description: string;
 	prompt: string;
 	llmModel: string;
 	symbol: string;
@@ -77,6 +78,7 @@ export type SavedPromptModel = {
 	averageRoiPct: number;
 	bestRoiPct: number | null;
 	worstRoiPct: number | null;
+	bestPnl: number | null;
 	lastPnl: number | null;
 	lastRoiPct: number | null;
 	lastResultAt: string | null;
@@ -104,6 +106,7 @@ export type SavedPromptModelRun = {
 
 export type SavePromptModelInput = {
 	modelName: string;
+	description?: string;
 	prompt: string;
 	llmModel?: string;
 	symbol?: string;
@@ -284,9 +287,9 @@ interface GameContextType {
 	listSavedModels: () => Promise<SavedPromptModel[]>;
 	listFeaturedModels: () => Promise<SavedPromptModel[]>;
 	savePromptModel: (input: SavePromptModelInput) => Promise<SavedPromptModel>;
-	evolvePromptModel: (modelId: string) => Promise<{ evolutionResult: any, model: SavedPromptModel }>;
-	mintPromptModel: (modelId: string) => Promise<{ mintResult: any, model: SavedPromptModel }>;
-	enterTournament: (modelId: string, txId: string) => Promise<{ message: string, tokenId: string }>;
+	evolvePromptModel: (modelId: string) => Promise<{ evolutionResult: any, model: SavedPromptModel; }>;
+	mintPromptModel: (modelId: string) => Promise<{ mintResult: any, model: SavedPromptModel; }>;
+	enterTournament: (modelId: string, txId: string) => Promise<{ message: string, tokenId: string; }>;
 	listModelRuns: (modelId: string, limit?: number) => Promise<SavedPromptModelRun[]>;
 	stopAgent: (targetRunId?: string) => Promise<{ txHash: string; finalPnl: number; roiPct: number; }>;
 	pushTerminalLog: (message: string) => void;
@@ -716,7 +719,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		return data.model;
 	};
 
-	const evolvePromptModel = async (modelId: string): Promise<{ evolutionResult: any, model: SavedPromptModel }> => {
+	const evolvePromptModel = async (modelId: string): Promise<{ evolutionResult: any, model: SavedPromptModel; }> => {
 		const response = await authFetch(`/models/${modelId}/evolve`, {
 			method: "POST"
 		});
@@ -732,7 +735,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		};
 	};
 
-	const mintPromptModel = async (modelId: string): Promise<{ mintResult: any, model: SavedPromptModel }> => {
+	const mintPromptModel = async (modelId: string): Promise<{ mintResult: any, model: SavedPromptModel; }> => {
 		if (!walletAddress) throw new Error("Wallet not connected");
 
 		setStatus("Minting NFT on Chipnet...");
@@ -755,7 +758,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		};
 	};
 
-	const enterTournament = async (modelId: string, txId: string): Promise<{ message: string, tokenId: string }> => {
+	const enterTournament = async (modelId: string, txId: string): Promise<{ message: string, tokenId: string; }> => {
 		setStatus("Verifying Escrow Transaction...");
 		const response = await authFetch(`/tournament/enter`, {
 			method: "POST",

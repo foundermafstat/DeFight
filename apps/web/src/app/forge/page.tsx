@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -8,25 +8,19 @@ import { useGame } from "@/context/GameContext";
 import { useRouter } from "next/navigation";
 import { runSafeAction } from "@/lib/safe-action";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
 	Sparkles,
 	Play,
-	ChevronDown,
 	Activity,
 	Cpu,
 	Shield,
 	Zap,
 	BarChart3,
 	Terminal,
-	Wallet,
-	Clock
+	Loader2,
+	Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
 
 const TRADING_PAIRS = [
 	{ symbol: "PEPEUSDT", name: "PEPE / USDT", volatility: "Extreme", prompt: "Monitor PEPE/USDT on 1m and 5m timeframes. Volatility is extreme. Look for sudden volume spikes > 300% average. Enter LONG on breakout above VWAP with RSI > 60. Take profit at 5% or trailing stop 1.5%. Stop loss tight at 2%." },
@@ -75,56 +69,55 @@ export default function ForgePage() {
 	} = useGame();
 
 	const router = useRouter();
-	const [selectedPair, setSelectedPair] = useState(TRADING_PAIRS[0]);
-	const [price, setPrice] = useState<number | null>(null);
-	const [loadingPrice, setLoadingPrice] = useState(false);
 	const [depositAmount, setDepositAmount] = useState("0.01");
 	const [isEvolving, setIsEvolving] = useState(false);
+	const [shortDescription, setShortDescription] = useState("");
+	const [isGenerating, setIsGenerating] = useState(false);
 
-	// Persist strategies per pair
-	const [strategies, setStrategies] = useState<Record<string, string>>({});
+	const generateFullPrompt = async () => {
+		if (!shortDescription.trim()) return;
+		setIsGenerating(true);
+		try {
+			const desc = shortDescription.trim();
+			// Generate a comprehensive trading strategy prompt from the short description
+			const generatedPrompt = [
+				`You are "${agentName || 'Trading Agent'}" — an autonomous AI trading agent designed for BCH/USDT on Chipnet.`,
+				``,
+				`Core Strategy: ${desc}`,
+				``,
+				`You receive:`,
+				`  • market (price, volume, bid/ask spread, 24h change)`,
+				`  • portfolio (baseBalance: BCH, quoteBalance: USDT)`,
+				``,
+				`EXECUTION RULES:`,
+				`1. ANALYZE market conditions using RSI(14), MACD(12,26,9), Bollinger Bands(20,2), and EMA(50/200).`,
+				`2. CALCULATE position size: never risk more than 5% of total portfolio per trade.`,
+				`3. ENTRY CONDITIONS:`,
+				`   - BUY when ${desc.toLowerCase().includes('buy') ? desc : 'multiple indicators confirm bullish momentum and price shows strength above key moving averages'}.`,
+				`   - SELL when ${desc.toLowerCase().includes('sell') ? desc : 'bearish divergence appears or price breaks below support with increasing volume'}.`,
+				`4. RISK MANAGEMENT:`,
+				`   - Stop Loss: 2% below entry for LONG, 2% above for SHORT.`,
+				`   - Take Profit: 3:1 reward-to-risk ratio minimum.`,
+				`   - Trailing Stop: Activate at 1.5% profit, trail by 0.8%.`,
+				`5. POSITION SIZING:`,
+				`   - Conservative: 10-20% of available quote balance per trade.`,
+				`   - Scale in: Add 50% more on confirmed breakout continuation.`,
+				`6. HOLD if no clear signal. Capital preservation is priority.`,
+				``,
+				`RESPOND with valid JSON: { "action": "BUY"|"SELL"|"HOLD", "confidence": 0-100, "reason": "...", "amount": number }`,
+			].join('\n');
 
-	const handlePairChange = (newPair: typeof TRADING_PAIRS[0]) => {
-		// Save current strategy for the old pair
-		setStrategies((prev) => ({
-			...prev,
-			[selectedPair.symbol]: strategy,
-		}));
-
-		const savedStrategy = strategies[newPair.symbol];
-
-		// If a strategy exists for the new pair, load it.
-		// Otherwise, keep the current strategy (copy over behavior).
-		if (savedStrategy !== undefined) {
-			setStrategy(savedStrategy);
+			setStrategy(generatedPrompt);
+			if (!agentName) {
+				// Auto-generate a name from the description
+				const words = desc.split(' ').filter(w => w.length > 2).slice(0, 2);
+				setAgentName(words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' Bot');
+			}
+		} finally {
+			setIsGenerating(false);
 		}
-
-		setSelectedPair(newPair);
 	};
 
-	useEffect(() => {
-		let interval: NodeJS.Timeout;
-
-		const fetchPrice = async () => {
-			try {
-				const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/market/price/${selectedPair.symbol}`);
-				if (response.ok) {
-					const data = await response.json();
-					setPrice(data.price);
-				}
-			} catch (error) {
-				console.error("Failed to fetch price:", error);
-			} finally {
-				setLoadingPrice(false);
-			}
-		};
-
-		setLoadingPrice(true);
-		fetchPrice();
-		interval = setInterval(fetchPrice, 10000);
-
-		return () => clearInterval(interval);
-	}, [selectedPair]);
 
 	const handleLaunch = async () => {
 		await launchAgent(depositAmount);
@@ -134,11 +127,11 @@ export default function ForgePage() {
 	const handleEvolve = async () => {
 		setIsEvolving(true);
 		try {
-			// Save first so it exists in Supabase
 			const savedModel = await savePromptModel({
 				modelName: agentName,
+				description: shortDescription,
 				prompt: strategy,
-				symbol: selectedPair.symbol,
+				symbol: "BCHUSDT",
 				settings: {
 					cycles,
 					intervalMs: 1000,
@@ -186,15 +179,6 @@ export default function ForgePage() {
 							Define parameters, risk controls, and execution logic.
 						</p>
 					</div>
-					<div className="flex items-center gap-2 rounded-full border border-white/5 bg-white/5 px-4 py-1.5 backdrop-blur-sm">
-						<div className="flex items-center gap-2">
-							<span className="relative flex h-2 w-2">
-								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-								<span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-							</span>
-							<span className="text-xs font-medium text-emerald-400 uppercase tracking-wider">System Online</span>
-						</div>
-					</div>
 				</div>
 
 				<div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
@@ -202,84 +186,19 @@ export default function ForgePage() {
 					{/* Left Column: Configuration */}
 					<div className="lg:col-span-8 flex flex-col gap-6">
 
-						{/* Market Data Panel */}
-						<div className="group relative overflow-hidden rounded-2xl border border-white/5 bg-[#121418] p-1 transition-all">
-							<div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
-							<div className="relative rounded-xl bg-neutral-900/50 p-5 backdrop-blur-md">
-								<div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-
-									<div className="flex items-center gap-6">
-										{/* Pair Selector */}
-										<div className="space-y-1.5">
-											<label className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mr-2">Target Pair</label>
-											<DropdownMenu>
-												<DropdownMenuTrigger asChild>
-													<Button
-														variant="outline"
-														className="w-[160px] justify-between border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-[#0AC18E] transition-colors"
-													>
-														<span className="font-mono">{selectedPair.name}</span>
-														<ChevronDown className="h-3 w-3 opacity-50" />
-													</Button>
-												</DropdownMenuTrigger>
-												<DropdownMenuContent className="border-neutral-800 bg-[#1a1d21] text-neutral-200">
-													{TRADING_PAIRS.map((pair) => (
-														<DropdownMenuItem
-															key={pair.symbol}
-															className="font-mono cursor-pointer hover:bg-white/5 hover:text-[#0AC18E] focus:bg-white/5 focus:text-[#0AC18E] flex justify-between gap-4"
-															onClick={() => handlePairChange(pair)}
-														>
-															<span>{pair.name}</span>
-															{pair.volatility === "Extreme" && <span className="text-[10px] text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded leading-none">Extreme</span>}
-															{pair.volatility === "High" && <span className="text-[10px] text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded leading-none">High</span>}
-															{pair.volatility === "Medium" && <span className="text-[10px] text-[#0AC18E] bg-[#0AC18E]/10 px-1.5 py-0.5 rounded leading-none">Medium</span>}
-															{pair.volatility === "Low" && <span className="text-[10px] text-neutral-400 bg-neutral-500/10 px-1.5 py-0.5 rounded leading-none">Low</span>}
-														</DropdownMenuItem>
-													))}
-												</DropdownMenuContent>
-											</DropdownMenu>
-										</div>
-
-										<div className="h-10 w-px bg-white/5 hidden sm:block"></div>
-
-										{/* Price Display */}
-										<div className="space-y-1.5">
-											<label className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">Mark Price</label>
-											<div className="flex items-baseline gap-2">
-												<span className="font-mono text-2xl font-bold tracking-tight text-white">
-													{price ? `$${price < 0.01 ? price.toFixed(6) : price.toFixed(2)}` : "---.--"}
-												</span>
-												{loadingPrice && (
-													<Activity className="h-3 w-3 animate-pulse text-[#0AC18E]" />
-												)}
-											</div>
-										</div>
-									</div>
-
-									<div className="flex items-center gap-2 text-xs text-neutral-500">
-										<Zap className="h-3 w-3" />
-										<span>Real-time Binance Feed</span>
-									</div>
-								</div>
-							</div>
-						</div>
 
 						{/* Strategy Editor Panel */}
 						<div className="relative rounded-2xl border border-white/5 bg-[#121418] p-1 shadow-2xl">
 							<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
 							<div className="relative rounded-xl bg-neutral-900/50 p-6 backdrop-blur-sm">
-								<div className="mb-6 flex items-center justify-between">
+								<div className="mb-6 flex items-center">
 									<div className="flex items-center gap-2">
 										<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0AC18E]/10 text-[#0AC18E]">
 											<Cpu className="h-4 w-4" />
 										</div>
 										<h3 className="font-display text-lg font-medium text-white uppercase tracking-wide">Agent Configuration</h3>
-									</div>
-									<div className="flex items-center gap-2 text-xs text-neutral-500">
-										<div className="h-1.5 w-1.5 rounded-full bg-[#0AC18E]"></div>
-										Draft Mode
 									</div>
 								</div>
 
@@ -298,99 +217,46 @@ export default function ForgePage() {
 										</div>
 										<div className="space-y-2">
 											<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
-												<Wallet className="h-3 w-3" /> Controller Address
+												<Wand2 className="h-3 w-3" /> Short Description
 											</label>
-											<Input
-												className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 font-mono text-xs h-11"
-												placeholder="0x..."
-												value={playerAddress}
-												onChange={(e) => setPlayerAddress(e.target.value)}
-											/>
+											<div className="flex gap-2">
+												<Input
+													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 h-11 flex-1"
+													placeholder="e.g. Buy dips, ride momentum"
+													value={shortDescription}
+													onChange={(e) => setShortDescription(e.target.value)}
+													onKeyDown={(e) => { if (e.key === 'Enter') void generateFullPrompt(); }}
+												/>
+												<Button
+													type="button"
+													className="h-11 px-4 bg-[#0AC18E]/10 border border-[#0AC18E]/30 text-[#0AC18E] hover:bg-[#0AC18E]/20 text-[10px] uppercase tracking-wider font-bold shrink-0"
+													disabled={isGenerating || !shortDescription.trim()}
+													onClick={() => void generateFullPrompt()}
+												>
+													{isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+												</Button>
+											</div>
+											<p className="text-[10px] text-neutral-600">Write a brief idea and press the button to generate a full strategy prompt</p>
 										</div>
 									</div>
 
 									<div className="space-y-2">
-										<div className="flex items-center justify-between">
-											<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
-												<Terminal className="h-3 w-3" /> Strategy Directive
-											</label>
-											<div className="flex items-center gap-2">
-												<Button
-													variant="ghost"
-													className="h-6 px-2 text-[10px] border border-[#0AC18E]/20 text-[#0AC18E] hover:bg-[#0AC18E]/10 uppercase tracking-wider font-bold"
-													onClick={() => setStrategy(selectedPair.prompt)}
-												>
-													<Sparkles className="h-3 w-3 mr-1" />
-													Load {selectedPair.symbol.replace("USDT", "")} Default
-												</Button>
-											</div>
-										</div>
+										<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
+											<Terminal className="h-3 w-3" /> Strategy Directive
+										</label>
 										<div className="relative">
 											<Textarea
-												className="min-h-[320px] resize-none border-white/10 bg-black/20 p-4 pb-14 text-sm leading-relaxed text-neutral-200 placeholder:text-neutral-700 focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 font-mono"
-												placeholder="Describe your strategy here. For example: 'Monitor RSI(14) on 15m timeframe. If RSI < 30 and price is above 200 EMA, enter LONG. Take profit at 1.5% and stop loss at 0.5%...'"
+												className="min-h-[320px] resize-none border-white/10 bg-black/20 p-4 pb-10 text-sm leading-relaxed text-neutral-200 placeholder:text-transparent focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 font-mono"
 												value={strategy}
 												onChange={(e) => setStrategy(e.target.value)}
 											/>
-											<div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-												{STRATEGY_PRESETS.map((preset) => (
-													<Button
-														key={preset.name}
-														variant="outline"
-														onClick={() => setStrategy(preset.prompt)}
-														className="h-7 px-2.5 text-[10px] border-white/5 bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10 hover:border-white/10"
-													>
-														<preset.icon className="h-3 w-3 mr-1.5" />
-														{preset.name}
-													</Button>
-												))}
-											</div>
-											<div className="absolute bottom-4 right-4 text-[10px] text-neutral-600 font-mono bg-black/40 px-2 py-1 rounded pointer-events-none">
+											<div className="absolute bottom-3 right-3 text-[10px] text-neutral-600 font-mono bg-black/40 px-2 py-1 rounded pointer-events-none">
 												{strategy.length} chars
 											</div>
 										</div>
 									</div>
 
-									<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 items-end">
-										<div className="space-y-2">
-											<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
-												<Clock className="h-3 w-3" /> Execution Cycles
-											</label>
-											<div className="relative">
-												<Input
-													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 h-11 pr-16"
-													type="number"
-													min={10}
-													max={1800}
-													value={cycles}
-													onChange={(e) => setCycles(Number(e.target.value))}
-												/>
-												<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 font-mono">
-													SECONDS
-												</span>
-											</div>
-										</div>
 
-										<div className="space-y-2">
-											<label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold flex items-center gap-1.5">
-												<Wallet className="h-3 w-3" /> Deposit (BCH)
-											</label>
-											<div className="relative">
-												<Input
-													className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 h-11 pr-8 "
-													type="number"
-													step="0.001"
-													min={0.001}
-													max={10}
-													value={depositAmount}
-													onChange={(e) => setDepositAmount(e.target.value)}
-												/>
-												<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 font-mono">
-													BCH
-												</span>
-											</div>
-										</div>
-									</div>
 
 									<div className="mt-6 flex flex-wrap gap-3 justify-end items-center">
 										<Button

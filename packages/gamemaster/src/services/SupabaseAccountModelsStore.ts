@@ -20,6 +20,7 @@ interface ModelRow {
 	id: string;
 	user_id: string;
 	model_name: string;
+	description: string;
 	prompt_text: string;
 	llm_model: string;
 	symbol: string;
@@ -30,6 +31,7 @@ interface ModelRow {
 	average_roi_pct: number;
 	best_roi_pct: number | null;
 	worst_roi_pct: number | null;
+	best_pnl: number | null;
 	last_pnl: number | null;
 	last_roi_pct: number | null;
 	last_result_at: string | null;
@@ -59,6 +61,7 @@ interface RunRow {
 export interface PromptModelEntity {
 	id: string;
 	modelName: string;
+	description: string;
 	prompt: string;
 	llmModel: string;
 	symbol: string;
@@ -69,6 +72,7 @@ export interface PromptModelEntity {
 	averageRoiPct: number;
 	bestRoiPct: number | null;
 	worstRoiPct: number | null;
+	bestPnl: number | null;
 	lastPnl: number | null;
 	lastRoiPct: number | null;
 	lastResultAt: string | null;
@@ -97,6 +101,7 @@ interface UpsertModelInput {
 	walletAddress: string;
 	chainId: number;
 	modelName: string;
+	description?: string;
 	prompt: string;
 	llmModel: string;
 	symbol: string;
@@ -191,7 +196,7 @@ export class SupabaseAccountModelsStore {
 
 		const user = await this.upsertUser(input.walletAddress, input.chainId);
 
-		const payload = {
+		const payload: Record<string, unknown> = {
 			user_id: user.id,
 			model_name: input.modelName,
 			prompt_text: input.prompt,
@@ -200,6 +205,10 @@ export class SupabaseAccountModelsStore {
 			settings_json: input.settings ?? {},
 			updated_at: new Date().toISOString(),
 		};
+
+		if (input.description !== undefined) {
+			payload.description = input.description;
+		}
 
 		const { data, error } = await this.client
 			.from(this.modelsTable)
@@ -313,8 +322,10 @@ export class SupabaseAccountModelsStore {
 		const nextAverageRoi = ((currentAverageRoi * currentTotalRuns) + input.roiPct) / nextTotalRuns;
 		const currentBestRoi = model.best_roi_pct;
 		const currentWorstRoi = model.worst_roi_pct;
+		const currentBestPnl = model.best_pnl;
 
 		const nextBestRoi = currentBestRoi === null ? input.roiPct : Math.max(currentBestRoi, input.roiPct);
+		const nextBestPnl = currentBestPnl === null ? input.pnl : Math.max(currentBestPnl, input.pnl);
 		const nextWorstRoi = currentWorstRoi === null ? input.roiPct : Math.min(currentWorstRoi, input.roiPct);
 
 		const nextTotalTrades = (model.total_trades ?? 0) + input.tradesCount;
@@ -332,6 +343,7 @@ export class SupabaseAccountModelsStore {
 				average_roi_pct: nextAverageRoi,
 				best_roi_pct: nextBestRoi,
 				worst_roi_pct: nextWorstRoi,
+				best_pnl: nextBestPnl,
 				last_pnl: input.pnl,
 				last_roi_pct: input.roiPct,
 				last_result_at: new Date(input.endedAt).toISOString(),
@@ -453,6 +465,7 @@ export class SupabaseAccountModelsStore {
 		return {
 			id: row.id,
 			modelName: row.model_name,
+			description: row.description ?? '',
 			prompt: row.prompt_text,
 			llmModel: row.llm_model,
 			symbol: row.symbol,
@@ -463,6 +476,7 @@ export class SupabaseAccountModelsStore {
 			averageRoiPct: row.average_roi_pct ?? 0,
 			bestRoiPct: row.best_roi_pct,
 			worstRoiPct: row.worst_roi_pct,
+			bestPnl: row.best_pnl,
 			lastPnl: row.last_pnl,
 			lastRoiPct: row.last_roi_pct,
 			lastResultAt: row.last_result_at,

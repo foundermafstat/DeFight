@@ -28,7 +28,7 @@ interface RunSessionInput {
 }
 
 const TRADE_FEE = 0.001;
-const SIMULATED_INITIAL_DEPOSIT_BCH = 1.0;
+const SIMULATED_INITIAL_DEPOSIT_USDT = 1000.0;
 
 export interface RunSessionSummary {
 	runId: string;
@@ -90,24 +90,24 @@ export class TradingOrchestrator {
 
 		try {
 			// Simulate initial deposit for paper trading
-			const initialBalances = { BCH: SIMULATED_INITIAL_DEPOSIT_BCH, token: 0 };
+			const initialBalances = { BCH: 0, USDT: SIMULATED_INITIAL_DEPOSIT_USDT };
 			const portfolio = await this.getOrCreatePortfolio(input.agent.playerAddress);
 			portfolio.baseBalance = initialBalances.BCH;
-			portfolio.quoteBalance = initialBalances.token;
+			portfolio.quoteBalance = initialBalances.USDT;
 
 			const m = await this.marketDataService.getSnapshot(input.symbol);
 			if (m && m.price > 0) {
 				portfolio.initialMarketPrice = m.price;
 				const startBCH = initialBalances.BCH;
-				const startTokens = initialBalances.token;
-				const totalStartValueInBCH = startBCH + (startTokens / m.price);
-				portfolio.initialTotalBCHValue = totalStartValueInBCH;
+				const startUSDT = initialBalances.USDT;
+				const totalStartValueInUSDT = startUSDT + (startBCH * m.price);
+				portfolio.initialTotalUSDTValue = totalStartValueInUSDT;
 
-				console.log(`[TradingOrchestrator] Session Start: ${startBCH.toFixed(6)} BCH + ${startTokens.toFixed(2)} Tokens | Total Value: ${totalStartValueInBCH.toFixed(6)} BCH`);
+				console.log(`[TradingOrchestrator] Session Start: ${startUSDT.toFixed(2)} USDT + ${startBCH.toFixed(6)} Tokens | Total Value: ${totalStartValueInUSDT.toFixed(2)} USDT`);
 			}
 
-			if (!portfolio.depositBCH) {
-				portfolio.depositBCH = initialBalances.BCH;
+			if (!portfolio.depositUSDT) {
+				portfolio.depositUSDT = initialBalances.USDT;
 			}
 		} catch (e) {
 			console.warn("[TradingOrchestrator] Could not snapshot initial deposit:", e);
@@ -168,16 +168,15 @@ export class TradingOrchestrator {
 		let roiPct = 0;
 		try {
 			const finalMarket = await this.marketDataService.getSnapshot(input.symbol);
-			const finalBCH = portfolio.baseBalance;
-			const initialBCH = portfolio.depositBCH;
+			const finalUSDT = portfolio.quoteBalance + (portfolio.baseBalance * finalMarket.price);
+			const initialUSDT = portfolio.depositUSDT || SIMULATED_INITIAL_DEPOSIT_USDT;
 
-			if (initialBCH && initialBCH > 0.0001) {
-				const pnlBCH = finalBCH - initialBCH;
-				roiPct = (pnlBCH / initialBCH) * 100;
-				finalPnl = pnlBCH * finalMarket.price;
+			if (initialUSDT && initialUSDT > 0) {
+				finalPnl = finalUSDT - initialUSDT;
+				roiPct = (finalPnl / initialUSDT) * 100;
 				console.log(
-					`[TradingOrchestrator] Final ROI: Initial=${initialBCH.toFixed(6)} BCH,` +
-					` Final=${finalBCH.toFixed(6)} BCH → PnL=${pnlBCH.toFixed(6)} BCH ($${finalPnl.toFixed(4)}), ROI=${roiPct.toFixed(2)}%`
+					`[TradingOrchestrator] Final ROI: Initial=${initialUSDT.toFixed(2)} USDT,` +
+					` Final=${finalUSDT.toFixed(2)} USDT → PnL=$${finalPnl.toFixed(4)}, ROI=${roiPct.toFixed(2)}%`
 				);
 			} else {
 				finalPnl = 0;
@@ -221,8 +220,8 @@ export class TradingOrchestrator {
 		const portfolio = await this.syncPortfolio(input.agent.playerAddress);
 
 		const currentVal = portfolio.quoteBalance + portfolio.baseBalance * market.price;
-		if (portfolio.initialCapital === 0 && currentVal > 0) {
-			portfolio.initialCapital = currentVal;
+		if (portfolio.initialCapital === 0) {
+			portfolio.initialCapital = portfolio.depositUSDT || SIMULATED_INITIAL_DEPOSIT_USDT;
 		}
 
 		const previousPnl = portfolio.lastPnl;
@@ -290,11 +289,11 @@ export class TradingOrchestrator {
 		}
 
 		const starting: PortfolioState = {
-			quoteBalance: 0,
-			baseBalance: SIMULATED_INITIAL_DEPOSIT_BCH,
-			initialCapital: 0,
+			quoteBalance: SIMULATED_INITIAL_DEPOSIT_USDT,
+			baseBalance: 0,
+			initialCapital: SIMULATED_INITIAL_DEPOSIT_USDT,
 			lastPnl: 0,
-			depositBCH: SIMULATED_INITIAL_DEPOSIT_BCH,
+			depositUSDT: SIMULATED_INITIAL_DEPOSIT_USDT,
 		};
 
 		this.portfolios.set(key, starting);
