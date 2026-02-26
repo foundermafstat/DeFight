@@ -1,0 +1,35 @@
+pragma cashscript ^0.10.0;
+
+// The Marketplace contract allows users to lock their NFTs with a set price.
+// Anyone can buy the NFT by sending the full price to the seller.
+contract Marketplace(
+    bytes20 sellerPkh, // The address to receive the funds
+    int price          // Selling price in satoshis
+) {
+    
+    // buy is called by anyone who wants to purchase the locked NFT
+    function buy() {
+        // Output 0: Payment to the seller
+        bytes32 sellerLock = new LockingBytecodeP2PKH(sellerPkh);
+        require(tx.outputs[0].lockingBytecode == sellerLock);
+        require(tx.outputs[0].value == price);
+        
+        // Output 1: The NFT goes to the buyer (the buyer's lock is output 1)
+        // Ensure the token category and commitment are preserved
+        require(tx.outputs[1].tokenCategory == tx.inputs[this.activeInputIndex].tokenCategory);
+        require(tx.outputs[1].nftCommitment == tx.inputs[this.activeInputIndex].nftCommitment);
+    }
+    
+    // cancel allows the seller to withdraw their NFT
+    function cancel(pubkey sellerPk, sig sellerSig) {
+        // Only the seller can cancel
+        require(hash160(sellerPk) == sellerPkh);
+        require(checkSig(sellerSig, sellerPk));
+        
+        // Output 0: The NFT goes back to the seller
+        bytes32 sellerLock = new LockingBytecodeP2PKH(sellerPkh);
+        require(tx.outputs[0].lockingBytecode == sellerLock);
+        require(tx.outputs[0].tokenCategory == tx.inputs[this.activeInputIndex].tokenCategory);
+        require(tx.outputs[0].nftCommitment == tx.inputs[this.activeInputIndex].nftCommitment);
+    }
+}

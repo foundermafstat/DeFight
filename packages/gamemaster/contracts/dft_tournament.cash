@@ -1,0 +1,55 @@
+pragma cashscript ^0.10.0;
+
+// The Tournament contract holds locked NFTs and BCH from players.
+// The GameMaster (Oracle) resolves the tournament and sends the total pot to the winner.
+contract Tournament(
+    pubkey gameMasterPk,     // Public key of the GameMaster backend
+    int tournamentFeeBasis,  // Fee percentage in basis points (e.g. 500 = 5%)
+    bytes20 feeReceiverPkh   // Where to send the platform fees
+) {
+
+    // resolveTournament is called by the GameMaster.
+    // The GameMaster provides a signature to prove authenticity.
+    // The winnerPkh receives the remaining pot.
+    function resolveTournament(sig gameMasterSig, bytes20 winnerPkh) {
+        // 1. Verify the GameMaster signature
+        require(checkSig(gameMasterSig, gameMasterPk));
+
+        // 2. Calculate the fee and the winner's pot
+        int totalValue = tx.inputs[this.activeInputIndex].value;
+        int feeAmount = (totalValue * tournamentFeeBasis) / 10000;
+        int winnerAmount = totalValue - feeAmount;
+
+        // 3. Define the outputs
+        // Output 0: The Winner gets the BCH pot and the NFT
+        bytes32 winnerLock = new LockingBytecodeP2PKH(winnerPkh);
+        require(tx.outputs[0].lockingBytecode == winnerLock);
+        require(tx.outputs[0].value == winnerAmount);
+        
+        // Output 1: The Platform gets the fee
+        bytes32 feeLock = new LockingBytecodeP2PKH(feeReceiverPkh);
+        require(tx.outputs[1].lockingBytecode == feeLock);
+        require(tx.outputs[1].value == feeAmount);
+        
+        // Ensure that the output token matches the input token (passing the NFT to the winner)
+        require(tx.outputs[0].tokenCategory == tx.inputs[this.activeInputIndex].tokenCategory);
+        require(tx.outputs[0].nftCommitment == tx.inputs[this.activeInputIndex].nftCommitment);
+    }
+    
+    // Safety fallback: allow refund if mutually agreed by the player and the GameMaster
+    function refund(pubkey playerPk, sig playerSig, sig gameMasterSig) {
+        // Must be signed by the GameMaster
+        require(checkSig(gameMasterSig, gameMasterPk));
+        // Must be signed by the player withdrawing the funds
+        require(checkSig(playerSig, playerPk));
+        
+        // The funds go back to the player
+        bytes32 playerLock = new LockingBytecodeP2PKH(hash160(playerPk));
+        require(tx.outputs[0].lockingBytecode == playerLock);
+        require(tx.outputs[0].value == tx.inputs[this.activeInputIndex].value - 1000); // minus tx fee
+        
+        // Pass token to player
+        require(tx.outputs[0].tokenCategory == tx.inputs[this.activeInputIndex].tokenCategory);
+        require(tx.outputs[0].nftCommitment == tx.inputs[this.activeInputIndex].nftCommitment);
+    }
+}
