@@ -11,6 +11,7 @@ export interface AgentConfig {
 	playerAddress: string;
 	agentName: string;
 	strategy: string;
+	tokenId?: string;
 }
 
 export interface PortfolioState {

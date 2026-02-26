@@ -182,22 +182,15 @@ export default function ArenaPage() {
 							</Button>
 
 							<div className="flex gap-2">
-								<Input
-									placeholder="Escrow TxID (from electrum etc)"
-									className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 h-11 w-64"
-									value={tournamentTxId}
-									onChange={(e) => setTournamentTxId(e.target.value)}
-									disabled={isEnteringTournament || entrySuccess}
-								/>
 								<Button
 									type="button"
 									className="bg-transparent border border-[#0AC18E] text-[#0AC18E] hover:bg-[#0AC18E]/10 px-8 h-11 uppercase tracking-wider font-bold transition-all"
-									disabled={!leftAgentKey || !tournamentTxId || isEnteringTournament || entrySuccess}
+									disabled={!leftAgentKey || isEnteringTournament || entrySuccess}
 									onClick={async () => {
-										if (!leftAgentKey || !tournamentTxId) return;
+										if (!leftAgentKey) return;
 										setIsEnteringTournament(true);
 										try {
-											await enterTournament(leftAgentKey, tournamentTxId);
+											await enterTournament(leftAgentKey);
 											setEntrySuccess(true);
 										} catch (e) {
 											// context handles error toast
@@ -207,7 +200,7 @@ export default function ArenaPage() {
 									}}
 								>
 									{isEnteringTournament ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeySquare className="mr-2 h-4 w-4" />}
-									{entrySuccess ? "Entered" : "Enter Tournament (Left Bot)"}
+									{entrySuccess ? "Entered" : "Enter Tournament (5000 tBCH)"}
 								</Button>
 							</div>
 						</div>

@@ -101,6 +101,7 @@ const AgentSchema = z.object({
 	playerAddress: z.string().min(8),
 	agentName: z.string().min(2).max(64),
 	strategy: z.string().min(10).max(4000),
+	tokenId: z.string().optional(),
 });
 
 const LoginRequestSchema = z.object({

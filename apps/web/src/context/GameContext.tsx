@@ -289,7 +289,8 @@ interface GameContextType {
 	savePromptModel: (input: SavePromptModelInput) => Promise<SavedPromptModel>;
 	evolvePromptModel: (modelId: string) => Promise<{ evolutionResult: any, model: SavedPromptModel; }>;
 	mintPromptModel: (modelId: string) => Promise<{ mintResult: any, model: SavedPromptModel; }>;
-	enterTournament: (modelId: string, txId: string) => Promise<{ message: string, tokenId: string; }>;
+	enterArenaEscrow: (tokenId: string) => Promise<string>;
+	enterTournament: (modelId: string, tokenId?: string) => Promise<{ message: string, tokenId: string; }>;
 	listModelRuns: (modelId: string, limit?: number) => Promise<SavedPromptModelRun[]>;
 	stopAgent: (targetRunId?: string) => Promise<{ txHash: string; finalPnl: number; roiPct: number; }>;
 	pushTerminalLog: (message: string) => void;
@@ -758,7 +759,52 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		};
 	};
 
-	const enterTournament = async (modelId: string, txId: string): Promise<{ message: string, tokenId: string; }> => {
+	const enterArenaEscrow = async (tokenId: string): Promise<string> => {
+		const seedPhrase = localStorage.getItem("defight_seed_phrase");
+		if (!seedPhrase) {
+			throw new Error("Local wallet seed phrase not found. Please re-authenticate.");
+		}
+
+		setStatus("Preparing Escrow Transaction...");
+		const { TestNetWallet } = await import("mainnet-js");
+		const wallet = await TestNetWallet.fromSeed(seedPhrase, "m/44'/145'/0'/0/0");
+
+		// TO DO: Should ideally be fetched dynamically depending on battle config
+		const ESCROW_ADDRESS = "bchtest:qrzz6md9q9w2505rtzuz9288z0pxu642yvv0fsqm82";
+		const STAKED_AMOUNT = 5000;
+
+		setStatus("Waiting for Wallet Signature...");
+		// In mainnet-js, sending an NFT + BCH involves specifying the cashaddr, value, and the token id
+		const { txId } = await wallet.send([
+			{
+				cashaddr: ESCROW_ADDRESS,
+				value: STAKED_AMOUNT,
+				unit: "sats",
+				tokenId: tokenId,
+			}
+		] as any[]);
+
+		console.log(`[Arena] Escrow Transaction broadcasted: ${txId}`);
+		return txId as string;
+	};
+
+	const enterTournament = async (modelId: string, explicitTokenId?: string): Promise<{ message: string, tokenId: string; }> => {
+		// 1. Get the actual tokenId for the given model if not provided
+		let targetTokenId = explicitTokenId;
+		if (!targetTokenId) {
+			// Find the model in the list to extract its tokenId
+			const models = await listSavedModels();
+			const model = models.find(m => m.id === modelId);
+			if (!model || !model.settings?.tokenId) {
+				throw new Error("Model is not minted or could not be found.");
+			}
+			targetTokenId = model.settings.tokenId as string;
+		}
+
+		// 2. Perform the on-chain Escrow transaction
+		const txId = await enterArenaEscrow(targetTokenId);
+
+		// 3. Notify the backend we've entered the tournament
 		setStatus("Verifying Escrow Transaction...");
 		const response = await authFetch(`/tournament/enter`, {
 			method: "POST",
@@ -954,6 +1000,21 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 			throw new Error("Choose two different agents for duel");
 		}
 
+		setStatus("Preparing Opponent Escrow...");
+		let rightTokenId = "";
+		let rightTxId = "";
+		try {
+			// In MVP, we have the local user pay the escrow for the opponent too to enable PvP
+			const rightEntry = await enterTournament(right.key);
+			rightTokenId = rightEntry.tokenId;
+			rightTxId = rightEntry.tokenId; // Using tokenId as dummy txId placeholder
+		} catch (e) {
+			console.warn("Could not escrow opponent:", e);
+			throw new Error("Failed to escrow opponent. Cannot start duel.");
+		}
+
+		setStatus("Initializing Arena Duel...");
+
 		const response = await authFetch("/tournament/start", {
 			method: "POST",
 			body: JSON.stringify({
@@ -961,11 +1022,13 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 					playerAddress: left.playerAddress,
 					agentName: left.name,
 					strategy: left.strategy,
+					tokenId: left.key // Assume the key is the modelId
 				},
 				rightAgent: {
 					playerAddress: right.playerAddress,
 					agentName: right.name,
 					strategy: right.strategy,
+					tokenId: rightTokenId
 				},
 				durationSec: 900,
 				tickSec: 5,
@@ -1208,6 +1271,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		savePromptModel,
 		evolvePromptModel,
 		mintPromptModel,
+		enterArenaEscrow,
 		enterTournament,
 		listModelRuns,
 		leaderboard,

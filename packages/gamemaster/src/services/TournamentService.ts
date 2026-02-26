@@ -6,138 +6,136 @@ import { MarketDataService } from "./MarketDataService";
 import { TradingOrchestrator } from "./TradingOrchestrator";
 
 interface StartTournamentInput {
-  agents: [AgentConfig, AgentConfig];
-  symbol: string;
-  durationSec: number;
-  tickSec: number;
+	agents: [AgentConfig, AgentConfig];
+	symbol: string;
+	durationSec: number;
+	tickSec: number;
 }
 
 export class TournamentService {
-  private readonly trading: TradingOrchestrator;
-  private readonly marketData: MarketDataService;
-  private readonly leaderboard: LeaderboardService;
-  private isRunning: boolean;
+	private readonly trading: TradingOrchestrator;
+	private readonly marketData: MarketDataService;
+	private readonly leaderboard: LeaderboardService;
+	private isRunning: boolean;
 
-  constructor(
-    trading: TradingOrchestrator,
-    marketData: MarketDataService,
-    leaderboard: LeaderboardService,
-    private bchService: any // Injected in index.ts
-  ) {
-    this.trading = trading;
-    this.marketData = marketData;
-    this.leaderboard = leaderboard;
-    this.isRunning = false;
-  }
+	constructor(
+		trading: TradingOrchestrator,
+		marketData: MarketDataService,
+		leaderboard: LeaderboardService,
+		private bchService: any // Injected in index.ts
+	) {
+		this.trading = trading;
+		this.marketData = marketData;
+		this.leaderboard = leaderboard;
+		this.isRunning = false;
+	}
 
-  startTournament(input: StartTournamentInput, io: Server): {
-    tournamentId: string;
-    startAt: number;
-    endAt: number;
-  } {
-    if (this.isRunning) {
-      throw new Error("A tournament is already running");
-    }
+	startTournament(input: StartTournamentInput, io: Server): {
+		tournamentId: string;
+		startAt: number;
+		endAt: number;
+	} {
+		if (this.isRunning) {
+			throw new Error("A tournament is already running");
+		}
 
-    this.isRunning = true;
+		this.isRunning = true;
 
-    const tournamentId = uuidv4();
-    const startAt = Date.now();
-    const endAt = startAt + input.durationSec * 1000;
+		const tournamentId = uuidv4();
+		const startAt = Date.now();
+		const endAt = startAt + input.durationSec * 1000;
 
-    for (const agent of input.agents) {
-      this.trading.resetPortfolio(agent.playerAddress);
-    }
+		for (const agent of input.agents) {
+			this.trading.resetPortfolio(agent.playerAddress);
+		}
 
-    io.emit("tournament:started", {
-      tournamentId,
-      startAt,
-      endAt,
-      agents: input.agents,
-      symbol: input.symbol,
-    });
+		io.emit("tournament:started", {
+			tournamentId,
+			startAt,
+			endAt,
+			agents: input.agents,
+			symbol: input.symbol,
+		});
 
-    void this.executeTournament({ tournamentId, startAt, endAt, ...input }, io)
-      .catch((error) => {
-        io.emit("tournament:error", {
-          tournamentId,
-          message: error instanceof Error ? error.message : "Unknown tournament error",
-        });
-      })
-      .finally(() => {
-        this.isRunning = false;
-      });
+		void this.executeTournament({ tournamentId, startAt, endAt, ...input }, io)
+			.catch((error) => {
+				io.emit("tournament:error", {
+					tournamentId,
+					message: error instanceof Error ? error.message : "Unknown tournament error",
+				});
+			})
+			.finally(() => {
+				this.isRunning = false;
+			});
 
-    return { tournamentId, startAt, endAt };
-  }
+		return { tournamentId, startAt, endAt };
+	}
 
-  private async executeTournament(
-    input: StartTournamentInput & { tournamentId: string; startAt: number; endAt: number },
-    io: Server,
-  ): Promise<void> {
-    while (Date.now() < input.endAt) {
-      const market = await this.marketData.getSnapshot(input.symbol);
+	private async executeTournament(
+		input: StartTournamentInput & { tournamentId: string; startAt: number; endAt: number; },
+		io: Server,
+	): Promise<void> {
+		while (Date.now() < input.endAt) {
+			const market = await this.marketData.getSnapshot(input.symbol);
 
-      await Promise.all(
-        input.agents.map((agent) =>
-          this.trading.runStep({
-            runId: input.tournamentId,
-            agent,
-            symbol: input.symbol,
-            source: "tournament",
-            io,
-            market,
-          }),
-        ),
-      );
+			await Promise.all(
+				input.agents.map((agent) =>
+					this.trading.runStep({
+						runId: input.tournamentId,
+						agent,
+						symbol: input.symbol,
+						source: "tournament",
+						io,
+						market,
+					}),
+				),
+			);
 
-      await this.delay(input.tickSec * 1000);
-    }
+			await this.delay(input.tickSec * 1000);
+		}
 
-    const leaderboard = await this.leaderboard.getLeaderboard();
-    const [agentA, agentB] = input.agents;
+		const leaderboard = await this.leaderboard.getLeaderboard();
+		const [agentA, agentB] = input.agents;
 
-    const agentAResult = leaderboard.find(
-      (row) => row.playerAddress.toLowerCase() === agentA.playerAddress.toLowerCase(),
-    );
+		const agentAResult = leaderboard.find(
+			(row) => row.playerAddress.toLowerCase() === agentA.playerAddress.toLowerCase(),
+		);
 
-    const agentBResult = leaderboard.find(
-      (row) => row.playerAddress.toLowerCase() === agentB.playerAddress.toLowerCase(),
-    );
+		const agentBResult = leaderboard.find(
+			(row) => row.playerAddress.toLowerCase() === agentB.playerAddress.toLowerCase(),
+		);
 
-    const winner =
-      (agentAResult?.pnl ?? Number.NEGATIVE_INFINITY) >=
-        (agentBResult?.pnl ?? Number.NEGATIVE_INFINITY)
-        ? agentA
-        : agentB;
+		const winner =
+			(agentAResult?.pnl ?? Number.NEGATIVE_INFINITY) >=
+				(agentBResult?.pnl ?? Number.NEGATIVE_INFINITY)
+				? agentA
+				: agentB;
 
-    const loser = winner === agentA ? agentB : agentA;
+		const loser = winner === agentA ? agentB : agentA;
 
-    // TODO: In a production app, the specific TokenIDs and staked pool size
-    // would be passed down via the tournament `input` config. 
-    // Here we hardcode values to illustrate the mechanic.
-    const loserTokenId = "mock-loser-token-id-12345";
-    const totalTbchPool = 10000; // 5000 + 5000 staked tbch
+		// Find the correct tokenId dynamically using the agents' data passed from the frontend
+		const loserTokenId = loser.tokenId || "mock-loser-token-id-12345";
+		const totalTbchPool = 10000; // 5000 + 5000 staked tbch
 
-    try {
-      const txId = await this.bchService.payoutTournamentWinner(winner.playerAddress, loserTokenId, totalTbchPool);
-      io.emit("tournament:escrow_payout", { txId, winner: winner.playerAddress, amount: totalTbchPool });
-    } catch (e) {
-      console.error("Payout failed", e);
-    }
+		try {
+			const txId = await this.bchService.payoutTournamentWinner(winner.playerAddress, loserTokenId, totalTbchPool);
+			io.emit("tournament:escrow_payout", { txId, winner: winner.playerAddress, amount: totalTbchPool });
+		} catch (e) {
+			console.error("Payout failed", e);
+		}
 
-    io.emit("tournament:ended", {
-      tournamentId: input.tournamentId,
-      endedAt: Date.now(),
-      winner,
-      results: {
-        [agentA.playerAddress]: agentAResult ?? null,
-        [agentB.playerAddress]: agentBResult ?? null,
-      },
-    });
-  }
+		io.emit("tournament:ended", {
+			tournamentId: input.tournamentId,
+			endedAt: Date.now(),
+			winner,
+			results: {
+				[agentA.playerAddress]: agentAResult ?? null,
+				[agentB.playerAddress]: agentBResult ?? null,
+			},
+		});
+	}
 
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
+	private delay(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
 }

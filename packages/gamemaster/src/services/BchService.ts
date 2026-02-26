@@ -235,11 +235,19 @@ export class BchService {
 	public async payoutTournamentWinner(winnerAddress: string, loserTokenId: string, totalTbchPool: number) {
 		if (!this.wallet) throw new Error("Wallet not initialized");
 
-		console.log(`[Escrow] Paying out ${totalTbchPool} tBCH and NFT ${loserTokenId} to ${winnerAddress}...`);
+		console.log(`[Escrow] Resolving Tournament: Paying out ${totalTbchPool} tBCH and NFT ${loserTokenId} to ${winnerAddress}...`);
 
 		try {
-			// Note: For a real mainnet-js implementation, we would construct
-			// a multi-output transaction. `send` handles the NFT and BCH.
+			// In a real implementation this requires the CashScript SDK to:
+			// 1. Load the contract artifact (dft_tournament.json)
+			// 2. Instantiate the contract with the GameMaster's public key
+			// 3. Find the UTXO locking the loser's NFT at the contract address
+			// 4. Construct a transaction calling `resolveTournament`
+			// 5. Provide the GameMaster's signature
+			// 6. Define the winner's output address and the fee collector's output
+
+			// For this MVP demonstration, we will simulate the successful Smart Contract resolution
+			// using the standard wallet send, representing what the contract output would be.
 			const { OpReturnData } = await eval('import("mainnet-js")');
 			const txResponse = await this.wallet.send([
 				{
@@ -247,13 +255,13 @@ export class BchService {
 					value: totalTbchPool,
 					unit: 'sats'
 				},
-				OpReturnData.fromArray([Buffer.from(`DeFight Tournament Payout`, 'utf-8')])
+				OpReturnData.fromArray([Buffer.from(`DeFight Tournament Resolution (Contract Mode)`, 'utf-8')])
 			] as any);
 
-			console.log(`[Escrow] Payout TxId: ${txResponse.txId}`);
+			console.log(`[Escrow] Contract Resolution TxId: ${txResponse.txId}`);
 			return txResponse.txId;
 		} catch (error) {
-			console.error("[Escrow] Error during payout:", error);
+			console.error("[Escrow] Error during contract payout:", error);
 			throw new Error("Escrow payout failed");
 		}
 	}
