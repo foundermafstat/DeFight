@@ -1,0 +1,115 @@
+{
+  "contractName": "Tournament",
+  "constructorInputs": [
+    {
+      "name": "gameMasterPk",
+      "type": "pubkey"
+    },
+    {
+      "name": "tournamentFeeBasis",
+      "type": "int"
+    },
+    {
+      "name": "feeReceiverPkh",
+      "type": "bytes20"
+    }
+  ],
+  "abi": [
+    {
+      "name": "resolveTournament",
+      "inputs": [
+        {
+          "name": "gameMasterSig",
+          "type": "sig"
+        },
+        {
+          "name": "winnerPkh",
+          "type": "bytes20"
+        }
+      ]
+    },
+    {
+      "name": "refund",
+      "inputs": [
+        {
+          "name": "playerPk",
+          "type": "pubkey"
+        },
+        {
+          "name": "playerSig",
+          "type": "sig"
+        },
+        {
+          "name": "gameMasterSig",
+          "type": "sig"
+        }
+      ]
+    }
+  ],
+  "bytecode": "OP_3 OP_PICK OP_0 OP_NUMEQUAL OP_IF OP_4 OP_ROLL OP_SWAP OP_CHECKSIGVERIFY OP_INPUTINDEX OP_UTXOVALUE OP_DUP OP_ROT OP_MUL 1027 OP_DIV OP_SWAP OP_OVER OP_SUB 76a914 OP_5 OP_ROLL OP_CAT 88ac OP_CAT OP_0 OP_OUTPUTBYTECODE OP_EQUALVERIFY OP_0 OP_OUTPUTVALUE OP_NUMEQUALVERIFY 76a914 OP_ROT OP_CAT 88ac OP_CAT OP_1 OP_OUTPUTBYTECODE OP_EQUALVERIFY OP_1 OP_OUTPUTVALUE OP_NUMEQUALVERIFY OP_0 OP_OUTPUTTOKENCATEGORY OP_INPUTINDEX OP_UTXOTOKENCATEGORY OP_EQUALVERIFY OP_0 OP_OUTPUTTOKENCOMMITMENT OP_INPUTINDEX OP_UTXOTOKENCOMMITMENT OP_EQUAL OP_NIP OP_ELSE OP_3 OP_ROLL OP_1 OP_NUMEQUALVERIFY OP_5 OP_ROLL OP_SWAP OP_CHECKSIGVERIFY OP_3 OP_ROLL OP_3 OP_PICK OP_CHECKSIGVERIFY 76a914 OP_3 OP_ROLL OP_HASH160 OP_CAT 88ac OP_CAT OP_0 OP_OUTPUTBYTECODE OP_EQUALVERIFY OP_0 OP_OUTPUTVALUE OP_INPUTINDEX OP_UTXOVALUE e803 OP_SUB OP_NUMEQUALVERIFY OP_0 OP_OUTPUTTOKENCATEGORY OP_INPUTINDEX OP_UTXOTOKENCATEGORY OP_EQUALVERIFY OP_0 OP_OUTPUTTOKENCOMMITMENT OP_INPUTINDEX OP_UTXOTOKENCOMMITMENT OP_EQUAL OP_NIP OP_NIP OP_ENDIF",
+  "source": "pragma cashscript ^0.12.0;\r\n\r\n// The Tournament contract holds locked NFTs and BCH from players.\r\n// The GameMaster (Oracle) resolves the tournament and sends the total pot to the winner.\r\ncontract Tournament(\r\n    pubkey gameMasterPk,     // Public key of the GameMaster backend\r\n    int tournamentFeeBasis,  // Fee percentage in basis points (e.g. 500 = 5%)\r\n    bytes20 feeReceiverPkh   // Where to send the platform fees\r\n) {\r\n\r\n    // resolveTournament is called by the GameMaster.\r\n    // The GameMaster provides a signature to prove authenticity.\r\n    // The winnerPkh receives the remaining pot.\r\n    function resolveTournament(sig gameMasterSig, bytes20 winnerPkh) {\r\n        // 1. Verify the GameMaster signature\r\n        require(checkSig(gameMasterSig, gameMasterPk));\r\n\r\n        // 2. Calculate the fee and the winner's pot\r\n        int totalValue = tx.inputs[this.activeInputIndex].value;\r\n        int feeAmount = (totalValue * tournamentFeeBasis) / 10000;\r\n        int winnerAmount = totalValue - feeAmount;\r\n\r\n        // 3. Define the outputs\r\n        // Output 0: The Winner gets the BCH pot and the NFT\r\n        bytes winnerLock = new LockingBytecodeP2PKH(winnerPkh);\r\n        require(tx.outputs[0].lockingBytecode == winnerLock);\r\n        require(tx.outputs[0].value == winnerAmount);\r\n        \r\n        // Output 1: The Platform gets the fee\r\n        bytes feeLock = new LockingBytecodeP2PKH(feeReceiverPkh);\r\n        require(tx.outputs[1].lockingBytecode == feeLock);\r\n        require(tx.outputs[1].value == feeAmount);\r\n        \r\n        // Ensure that the output token matches the input token (passing the NFT to the winner)\r\n        require(tx.outputs[0].tokenCategory == tx.inputs[this.activeInputIndex].tokenCategory);\r\n        require(tx.outputs[0].nftCommitment == tx.inputs[this.activeInputIndex].nftCommitment);\r\n    }\r\n    \r\n    // Safety fallback: allow refund if mutually agreed by the player and the GameMaster\r\n    function refund(pubkey playerPk, sig playerSig, sig gameMasterSig) {\r\n        // Must be signed by the GameMaster\r\n        require(checkSig(gameMasterSig, gameMasterPk));\r\n        // Must be signed by the player withdrawing the funds\r\n        require(checkSig(playerSig, playerPk));\r\n        \r\n        // The funds go back to the player\r\n        bytes playerLock = new LockingBytecodeP2PKH(hash160(playerPk));\r\n        require(tx.outputs[0].lockingBytecode == playerLock);\r\n        require(tx.outputs[0].value == tx.inputs[this.activeInputIndex].value - 1000); // minus tx fee\r\n        \r\n        // Pass token to player\r\n        require(tx.outputs[0].tokenCategory == tx.inputs[this.activeInputIndex].tokenCategory);\r\n        require(tx.outputs[0].nftCommitment == tx.inputs[this.activeInputIndex].nftCommitment);\r\n    }\r\n}\r\n",
+  "debug": {
+    "bytecode": "5379009c63547a7cadc0c6767b95021027967c78940376a914557a7e0288ac7e00cd8800cc9d0376a9147b7e0288ac7e51cd8851cc9d00d1c0ce8800d2c0cf877767537a519d557a7cad537a5379ad0376a914537aa97e0288ac7e00cd8800ccc0c602e803949d00d1c0ce8800d2c0cf87777768",
+    "sourceMap": "14:4:37:5;;;;;16:25:16:38;;:40::52;:8::55:1;19:35:19:56:0;:25::63:1;20::20:35:0;:38::56;:25:::1;:60::65:0;:24:::1;21:27:21:37:0;:40::49;:27:::1;25::25:62:0;:52::61;;:27::62:1;;;26::26:28:0;:16::45:1;:8::61;27:27:27:28:0;:16::35:1;:8::53;30:24:30:64:0;:49::63;:24::64:1;;;31:27:31:28:0;:16::45:1;:8::58;32:27:32:28:0;:16::35:1;:8::50;35:27:35:28:0;:16::43:1;:57::78:0;:47::93:1;:8::95;36:27:36:28:0;:16::43:1;:57::78:0;:47::93:1;:8::95;14:4:37:5;;40::54::0;;;;42:25:42:38;;:40::52;:8::55:1;44:25:44:34:0;;:36::44;;:8::47:1;47:27:47:70:0;:60::68;;:52::69:1;:27::70;;;48::48:28:0;:16::45:1;:8::61;49:27:49:28:0;:16::35:1;:49::70:0;:39::77:1;:80::84:0;:39:::1;:8::86;52:27:52:28:0;:16::43:1;:57::78:0;:47::93:1;:8::95;53:27:53:28:0;:16::43:1;:57::78:0;:47::93:1;:8::95;40:4:54:5;;5:0:55:1",
+    "logs": [],
+    "requires": [
+      {
+        "ip": 11,
+        "line": 16
+      },
+      {
+        "ip": 30,
+        "line": 26
+      },
+      {
+        "ip": 33,
+        "line": 27
+      },
+      {
+        "ip": 41,
+        "line": 31
+      },
+      {
+        "ip": 44,
+        "line": 32
+      },
+      {
+        "ip": 49,
+        "line": 35
+      },
+      {
+        "ip": 55,
+        "line": 36
+      },
+      {
+        "ip": 64,
+        "line": 42
+      },
+      {
+        "ip": 69,
+        "line": 44
+      },
+      {
+        "ip": 79,
+        "line": 48
+      },
+      {
+        "ip": 86,
+        "line": 49
+      },
+      {
+        "ip": 91,
+        "line": 52
+      },
+      {
+        "ip": 97,
+        "line": 53
+      }
+    ]
+  },
+  "compiler": {
+    "name": "cashc",
+    "version": "0.12.1"
+  },
+  "updatedAt": "2026-02-26T03:26:16.336Z"
+}

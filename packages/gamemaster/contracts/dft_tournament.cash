@@ -1,4 +1,4 @@
-pragma cashscript ^0.10.0;
+pragma cashscript ^0.12.0;
 
 // The Tournament contract holds locked NFTs and BCH from players.
 // The GameMaster (Oracle) resolves the tournament and sends the total pot to the winner.
@@ -22,12 +22,12 @@ contract Tournament(
 
         // 3. Define the outputs
         // Output 0: The Winner gets the BCH pot and the NFT
-        bytes32 winnerLock = new LockingBytecodeP2PKH(winnerPkh);
+        bytes winnerLock = new LockingBytecodeP2PKH(winnerPkh);
         require(tx.outputs[0].lockingBytecode == winnerLock);
         require(tx.outputs[0].value == winnerAmount);
         
         // Output 1: The Platform gets the fee
-        bytes32 feeLock = new LockingBytecodeP2PKH(feeReceiverPkh);
+        bytes feeLock = new LockingBytecodeP2PKH(feeReceiverPkh);
         require(tx.outputs[1].lockingBytecode == feeLock);
         require(tx.outputs[1].value == feeAmount);
         
@@ -44,7 +44,7 @@ contract Tournament(
         require(checkSig(playerSig, playerPk));
         
         // The funds go back to the player
-        bytes32 playerLock = new LockingBytecodeP2PKH(hash160(playerPk));
+        bytes playerLock = new LockingBytecodeP2PKH(hash160(playerPk));
         require(tx.outputs[0].lockingBytecode == playerLock);
         require(tx.outputs[0].value == tx.inputs[this.activeInputIndex].value - 1000); // minus tx fee
         

@@ -369,7 +369,7 @@ export class SupabaseAccountModelsStore {
 		return data as UserRow;
 	}
 
-	private async getUserByWallet(walletAddress: string): Promise<UserRow | null> {
+	public async getUserByWallet(walletAddress: string): Promise<UserRow | null> {
 		if (!this.client) {
 			return null;
 		}
@@ -389,7 +389,7 @@ export class SupabaseAccountModelsStore {
 		return (data as UserRow | null) ?? null;
 	}
 
-	private async getModelByIdForUser(userId: string, modelId: string): Promise<ModelRow | null> {
+	public async getModelByIdForUser(userId: string, modelId: string): Promise<ModelRow | null> {
 		if (!this.client) {
 			return null;
 		}

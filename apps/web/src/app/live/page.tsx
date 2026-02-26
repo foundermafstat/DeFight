@@ -56,12 +56,15 @@ export default function LivePage() {
 		finalRoiPct,
 		sessions,
 		activeRunId,
-		setActiveRunId
+		setActiveRunId,
+		mintPromptModel
 	} = useGame();
 
 	const router = useRouter();
 	const [isStopping, setIsStopping] = useState(false);
 	const [stopResult, setStopResult] = useState<StopResult | null>(null);
+	const [isMinting, setIsMinting] = useState(false);
+	const [mintResult, setMintResult] = useState<{ txHash?: string, ipfsUri?: string } | null>(null);
 
 	const handleStop = async () => {
 		setIsStopping(true);
@@ -470,11 +473,77 @@ export default function LivePage() {
 									)}
 								</div>
 
+								{/* Mint NFT Option */}
+								{activeRunId && sessions[activeRunId]?.launchedModelId && !mintResult && (
+									<div className="mb-6 rounded-lg border border-[#0AC18E]/30 bg-[#0AC18E]/5 p-4 flex flex-col gap-3">
+										<div className="flex items-center gap-2">
+											<Zap className="h-4 w-4 text-[#0AC18E]" />
+											<h3 className="text-sm font-bold text-white uppercase tracking-wide">Mint Winner Bot</h3>
+										</div>
+										<p className="text-xs text-neutral-400">
+											Mint this bot's configuration as a Cashtoken NFT to take it to the Arena.
+										</p>
+										<Button
+											type="button"
+											className="w-full bg-[#0AC18E] hover:bg-[#cda460] text-black uppercase tracking-wider text-xs h-9 font-bold"
+											disabled={isMinting}
+											onClick={async () => {
+												setIsMinting(true);
+												try {
+													const modelId = sessions[activeRunId].launchedModelId;
+													if (modelId) {
+														const result = await mintPromptModel(modelId);
+														setMintResult({ txHash: result.mintResult.txId, ipfsUri: result.mintResult.ipfsUri });
+													}
+												} catch (e) {
+													console.error("Minting failed", e);
+												} finally {
+													setIsMinting(false);
+												}
+											}}
+										>
+											{isMinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+											{isMinting ? "Minting to Chipnet..." : "Mint as NFT"}
+										</Button>
+									</div>
+								)}
+
+								{/* Mint Success */}
+								{mintResult && (
+									<div className="mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+										<div className="flex items-center gap-2 mb-2">
+											<Trophy className="h-4 w-4 text-emerald-400" />
+											<h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wide">Successfully Minted</h3>
+										</div>
+										<a
+											href={`${EXPLORER_BASE}${mintResult.txHash}`}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="flex items-center gap-2 text-neutral-300 hover:text-white transition-colors font-mono text-xs mb-1"
+										>
+											View Genesis Tx <ExternalLink className="h-3 w-3" />
+										</a>
+										{mintResult.ipfsUri && (
+											<a
+												href={mintResult.ipfsUri.replace("ipfs://", "https://ipfs.io/ipfs/")}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="flex items-center gap-2 text-neutral-300 hover:text-white transition-colors font-mono text-xs"
+											>
+												View Metadata <ExternalLink className="h-3 w-3" />
+											</a>
+										)}
+									</div>
+								)}
+
 								{/* Close button */}
 								<Button
 									type="button"
 									className="w-full bg-white/10 hover:bg-white/20 text-white uppercase tracking-wider text-xs h-9"
-									onClick={() => setStopResult(null)}
+									onClick={() => {
+										setStopResult(null);
+										setMintResult(null);
+									}}
 								>
 									Close
 								</Button>

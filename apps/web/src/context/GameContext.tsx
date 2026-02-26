@@ -36,6 +36,7 @@ export type ActiveSession = {
 	finalRoiPct: number | null;
 	marketPrice: number | null;
 	agentStartedAt: string | null;
+	launchedModelId: string | null;
 };
 
 export type PromptAnalysis = {
@@ -283,6 +284,9 @@ interface GameContextType {
 	listSavedModels: () => Promise<SavedPromptModel[]>;
 	listFeaturedModels: () => Promise<SavedPromptModel[]>;
 	savePromptModel: (input: SavePromptModelInput) => Promise<SavedPromptModel>;
+	evolvePromptModel: (modelId: string) => Promise<{ evolutionResult: any, model: SavedPromptModel }>;
+	mintPromptModel: (modelId: string) => Promise<{ mintResult: any, model: SavedPromptModel }>;
+	enterTournament: (modelId: string, txId: string) => Promise<{ message: string, tokenId: string }>;
 	listModelRuns: (modelId: string, limit?: number) => Promise<SavedPromptModelRun[]>;
 	stopAgent: (targetRunId?: string) => Promise<{ txHash: string; finalPnl: number; roiPct: number; }>;
 	pushTerminalLog: (message: string) => void;
@@ -695,6 +699,65 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		return data.model;
 	};
 
+	const evolvePromptModel = async (modelId: string): Promise<{ evolutionResult: any, model: SavedPromptModel }> => {
+		const response = await authFetch(`/models/${modelId}/evolve`, {
+			method: "POST"
+		});
+
+		if (!response.ok) {
+			throw new Error(await readErrorMessage(response));
+		}
+
+		const data = await response.json();
+		return {
+			evolutionResult: data.evolutionResult,
+			model: data.model
+		};
+	};
+
+	const mintPromptModel = async (modelId: string): Promise<{ mintResult: any, model: SavedPromptModel }> => {
+		setStatus("Minting NFT on Chipnet...");
+		const response = await authFetch(`/models/${modelId}/mint`, {
+			method: "POST"
+		});
+
+		if (!response.ok) {
+			throw new Error(await readErrorMessage(response));
+		}
+
+		const data = await response.json();
+
+		setStatus("Minting successful!");
+		pushToast("Bot NFT Minted to wallet", "success");
+
+		return {
+			mintResult: data.mintResult,
+			model: data.model
+		};
+	};
+
+	const enterTournament = async (modelId: string, txId: string): Promise<{ message: string, tokenId: string }> => {
+		setStatus("Verifying Escrow Transaction...");
+		const response = await authFetch(`/tournament/enter`, {
+			method: "POST",
+			body: JSON.stringify({ modelId, txId })
+		});
+
+		if (!response.ok) {
+			throw new Error(await readErrorMessage(response));
+		}
+
+		const data = await response.json();
+
+		setStatus("Successfully entered the Arena!");
+		pushToast("Escrow verified. Entry complete.", "success");
+
+		return {
+			message: data.message,
+			tokenId: data.tokenId
+		};
+	};
+
 	const listModelRuns = async (modelId: string, limit = 24): Promise<SavedPromptModelRun[]> => {
 		if (!modelId) {
 			return [];
@@ -722,6 +785,13 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		// 3. Launch Agent
 		setStatus("Launching agent...");
 
+		const savedModel = await savePromptModel({
+			modelName: agentName,
+			prompt: strategy,
+			symbol: "BCHUSDT",
+			settings: { cycles, intervalMs: 1000, source: "solo" }
+		});
+
 		const response = await authFetch("/agents/launch", {
 			method: "POST",
 			body: JSON.stringify({
@@ -739,13 +809,18 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 			throw new Error(errorText || "Launch failed");
 		}
 
-		const data = await response.json();
-		const newRunId = data.runId as string;
+		const data = await response.json() as {
+			runId: string;
+			strategyContext?: string;
+			message?: string;
+		};
+
+		const runId = data.runId;
 
 		setSessions(prev => ({
 			...prev,
-			[newRunId]: {
-				runId: newRunId,
+			[runId]: {
+				runId,
 				agentName,
 				symbol: "BCHUSDT",
 				isActive: true,
@@ -755,12 +830,13 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 				finalPnl: null,
 				finalRoiPct: null,
 				marketPrice: null,
-				agentStartedAt: new Date().toISOString()
+				agentStartedAt: new Date().toISOString(),
+				launchedModelId: savedModel.id, // this will be updated via tracking
 			}
 		}));
 
 		if (!activeRunId) {
-			setActiveRunId(newRunId);
+			setActiveRunId(runId);
 		}
 
 		setStatus(`Live session started (${agentName})`);
@@ -1108,6 +1184,9 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		listSavedModels,
 		listFeaturedModels,
 		savePromptModel,
+		evolvePromptModel,
+		mintPromptModel,
+		enterTournament,
 		listModelRuns,
 		leaderboard,
 

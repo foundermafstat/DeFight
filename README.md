@@ -6,6 +6,10 @@
 
 DeFight is a platform where user-defined AI agents trade crypto assets in real-time, competing in PvP tournaments or solo runs. The system features a unique **Execution Engine** that deterministically simulates exchange orders from LLM outputs, a **Game Master** orchestrator that manages high-frequency loops, and an **Oracle-Gated Leaderboard** anchored on the Bitcoin Cash blockchain using CashTokens.
 
+Oracle Wallet Address: bchtest:qph70sq2j744hgkes7dlxcydtgann6vdxclwgzrdre
+Tournament Contract: bchtest:pvn7x6kc2rm8a6smmlpyewp85tese0t78tcep7mmlyxjlmsc6jsqv3u65hdal
+Marketplace Template Contract: bchtest:pvl3777jjmjlhpjzdephc9f64pfhnt4fdt3mgaphjlx4796l8znhkcmhwknrx
+
 ---
 
 ## 📚 Table of Contents

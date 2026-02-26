@@ -25,11 +25,15 @@ import {
 	Timer,
 	ArrowLeft,
 	Trophy,
-	Users
+	Users,
+	KeySquare,
+	Loader2
 } from "lucide-react";
 import { useGame, formatClock } from "@/context/GameContext";
 import { useRouter } from "next/navigation";
 import { runSafeAction } from "@/lib/safe-action";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 export default function ArenaPage() {
 	const {
@@ -47,9 +51,14 @@ export default function ArenaPage() {
 		arenaLeftLogs,
 		arenaRightLogs,
 		arenaChartData,
+		enterTournament
 	} = useGame();
 
 	const router = useRouter();
+
+	const [isEnteringTournament, setIsEnteringTournament] = useState(false);
+	const [tournamentTxId, setTournamentTxId] = useState("");
+	const [entrySuccess, setEntrySuccess] = useState(false);
 
 	return (
 		<main className="relative min-h-screen w-full overflow-hidden pt-24 pb-20">
@@ -160,7 +169,7 @@ export default function ArenaPage() {
 							</div>
 						</div>
 
-						<div className="mt-8 flex justify-center">
+						<div className="mt-8 flex flex-col md:flex-row justify-center gap-4">
 							<Button
 								type="button"
 								className="bg-[#0AC18E] text-black hover:bg-[#cda460] px-12 h-11 uppercase tracking-wider font-bold shadow-[0_0_20px_rgba(228,191,128,0.2)] hover:shadow-[0_0_30px_rgba(228,191,128,0.4)] transition-all"
@@ -171,6 +180,36 @@ export default function ArenaPage() {
 								<Zap className="mr-2 h-4 w-4" />
 								Initiate Duel Protocol
 							</Button>
+
+							<div className="flex gap-2">
+								<Input
+									placeholder="Escrow TxID (from electrum etc)"
+									className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 focus:border-[#0AC18E]/50 focus:ring-[#0AC18E]/20 h-11 w-64"
+									value={tournamentTxId}
+									onChange={(e) => setTournamentTxId(e.target.value)}
+									disabled={isEnteringTournament || entrySuccess}
+								/>
+								<Button
+									type="button"
+									className="bg-transparent border border-[#0AC18E] text-[#0AC18E] hover:bg-[#0AC18E]/10 px-8 h-11 uppercase tracking-wider font-bold transition-all"
+									disabled={!leftAgentKey || !tournamentTxId || isEnteringTournament || entrySuccess}
+									onClick={async () => {
+										if (!leftAgentKey || !tournamentTxId) return;
+										setIsEnteringTournament(true);
+										try {
+											await enterTournament(leftAgentKey, tournamentTxId);
+											setEntrySuccess(true);
+										} catch (e) {
+											// context handles error toast
+										} finally {
+											setIsEnteringTournament(false);
+										}
+									}}
+								>
+									{isEnteringTournament ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeySquare className="mr-2 h-4 w-4" />}
+									{entrySuccess ? "Entered" : "Enter Tournament (Left Bot)"}
+								</Button>
+							</div>
 						</div>
 
 						<div className="mt-4 flex justify-center">

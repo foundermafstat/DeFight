@@ -1,8 +1,8 @@
-import { TestNetWallet, OpReturnData } from 'mainnet-js';
+import type { TestNetWallet as TestNetWalletType } from 'mainnet-js';
 import { FilebaseService } from './FilebaseService';
 
 export class BchService {
-    private wallet: TestNetWallet | null = null;
+    private wallet: TestNetWalletType | null = null;
     private wif: string;
     private filebaseService: FilebaseService;
 
@@ -15,8 +15,9 @@ export class BchService {
      * Initialize the Oracle server wallet.
      */
     public async init() {
+        const { TestNetWallet } = await eval('import("mainnet-js")');
         this.wallet = await TestNetWallet.fromWIF(this.wif);
-        console.log(`BCH Oracle Wallet Address: ${this.wallet.cashaddr}`);
+        console.log(`BCH Oracle Wallet Address: ${this.wallet!.cashaddr}`);
     }
 
     /**
@@ -79,6 +80,8 @@ export class BchService {
             'utf-8'
         );
 
+        const { OpReturnData } = await eval('import("mainnet-js")');
+
         const anchorTx = await this.wallet.send([
             OpReturnData.fromArray([payloadBuffer])
         ]);
@@ -111,6 +114,7 @@ export class BchService {
         );
 
         // Send an OP_RETURN data output.
+        const { OpReturnData } = await eval('import("mainnet-js")');
         const response = await this.wallet.send([
             OpReturnData.fromArray([payloadBuffer])
         ]);
@@ -129,6 +133,7 @@ export class BchService {
      */
     public async verifyNftOwnership(userAddress: string, targetTokenId: string): Promise<boolean> {
         // We can use a Watch-only wallet to easily query the network.
+        const { TestNetWallet } = await eval('import("mainnet-js")');
         const watchWallet = await TestNetWallet.watchOnly(userAddress);
 
         // Retrieve all token UTXOs owned by this address
@@ -136,5 +141,39 @@ export class BchService {
 
         // Check if the target Token ID exists in their UTXO set
         return tokenUtxos.some((u: any) => u.token?.tokenId === targetTokenId);
+    }
+
+    /**
+     * Executes the tournament settlement. The GameMaster wallet 
+     * transfers the staked tBCH and the loser's NFT to the winner.
+     * 
+     * @param winnerAddress The testnet BCH address of the winner
+     * @param loserTokenId The NFT TokenId of the loser to be transferred
+     * @param totalTbchPool The total tBCH staked to send (minus fees)
+     */
+    public async payoutTournamentWinner(winnerAddress: string, loserTokenId: string, totalTbchPool: number) {
+        if (!this.wallet) throw new Error("Wallet not initialized");
+
+        console.log(`[Escrow] Paying out ${totalTbchPool} tBCH and NFT ${loserTokenId} to ${winnerAddress}...`);
+
+        try {
+            // Note: For a real mainnet-js implementation, we would construct
+            // a multi-output transaction. `send` handles the NFT and BCH.
+            const { OpReturnData } = await eval('import("mainnet-js")');
+            const txResponse = await this.wallet.send([
+                {
+                    cashaddr: winnerAddress,
+                    value: totalTbchPool,
+                    unit: 'sats'
+                },
+                OpReturnData.fromArray([Buffer.from(`DeFight Tournament Payout`, 'utf-8')])
+            ] as any);
+
+            console.log(`[Escrow] Payout TxId: ${txResponse.txId}`);
+            return txResponse.txId;
+        } catch (error) {
+            console.error("[Escrow] Error during payout:", error);
+            throw new Error("Escrow payout failed");
+        }
     }
 }

@@ -22,6 +22,7 @@ export class TournamentService {
     trading: TradingOrchestrator,
     marketData: MarketDataService,
     leaderboard: LeaderboardService,
+    private bchService: any // Injected in index.ts
   ) {
     this.trading = trading;
     this.marketData = marketData;
@@ -106,9 +107,24 @@ export class TournamentService {
 
     const winner =
       (agentAResult?.pnl ?? Number.NEGATIVE_INFINITY) >=
-      (agentBResult?.pnl ?? Number.NEGATIVE_INFINITY)
+        (agentBResult?.pnl ?? Number.NEGATIVE_INFINITY)
         ? agentA
         : agentB;
+
+    const loser = winner === agentA ? agentB : agentA;
+
+    // TODO: In a production app, the specific TokenIDs and staked pool size
+    // would be passed down via the tournament `input` config. 
+    // Here we hardcode values to illustrate the mechanic.
+    const loserTokenId = "mock-loser-token-id-12345";
+    const totalTbchPool = 10000; // 5000 + 5000 staked tbch
+
+    try {
+      const txId = await this.bchService.payoutTournamentWinner(winner.playerAddress, loserTokenId, totalTbchPool);
+      io.emit("tournament:escrow_payout", { txId, winner: winner.playerAddress, amount: totalTbchPool });
+    } catch (e) {
+      console.error("Payout failed", e);
+    }
 
     io.emit("tournament:ended", {
       tournamentId: input.tournamentId,

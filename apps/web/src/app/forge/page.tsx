@@ -70,6 +70,8 @@ export default function ForgePage() {
 		analyzeCurrentPrompt,
 		launchAgent,
 		analysis,
+		savePromptModel,
+		evolvePromptModel,
 	} = useGame();
 
 	const router = useRouter();
@@ -77,6 +79,7 @@ export default function ForgePage() {
 	const [price, setPrice] = useState<number | null>(null);
 	const [loadingPrice, setLoadingPrice] = useState(false);
 	const [depositAmount, setDepositAmount] = useState("0.01");
+	const [isEvolving, setIsEvolving] = useState(false);
 
 	// Persist strategies per pair
 	const [strategies, setStrategies] = useState<Record<string, string>>({});
@@ -126,6 +129,41 @@ export default function ForgePage() {
 	const handleLaunch = async () => {
 		await launchAgent(depositAmount);
 		router.push("/live");
+	};
+
+	const handleEvolve = async () => {
+		setIsEvolving(true);
+		try {
+			// Save first so it exists in Supabase
+			const savedModel = await savePromptModel({
+				modelName: agentName,
+				prompt: strategy,
+				symbol: selectedPair.symbol,
+				settings: {
+					cycles,
+					intervalMs: 1000,
+					source: "solo",
+				}
+			});
+
+			// Call /evolve endpoint
+			const { evolutionResult, model } = await evolvePromptModel(savedModel.id);
+
+			if (evolutionResult.bestShadow) {
+				// Update UI state with the mutated prompt
+				setStrategy(evolutionResult.bestShadow.description || model.prompt);
+				// Optionally re-run analysis automatically
+				setTimeout(analyzeCurrentPrompt, 500);
+			} else {
+				alert("No mutation was able to beat the original PnL.");
+			}
+
+		} catch (error) {
+			console.error("Evolution failed:", error);
+			alert("Evolution failed: " + (error as Error).message);
+		} finally {
+			setIsEvolving(false);
+		}
 	};
 
 	return (
@@ -352,35 +390,49 @@ export default function ForgePage() {
 												</span>
 											</div>
 										</div>
+									</div>
 
-										<div className="flex gap-3 col-span-1 md:col-span-2 lg:col-span-2 justify-end">
-											<Button
-												type="button"
-												variant="secondary"
-												onClick={analyzeCurrentPrompt}
-												className="border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10 hover:text-white h-11 uppercase tracking-wider text-xs font-bold px-6"
-											>
-												<Sparkles className="mr-2 h-3.5 w-3.5" />
-												Analyze
-											</Button>
-											<Button
-												type="button"
-												className="bg-[#0AC18E] text-black hover:bg-[#cda460] h-11 uppercase tracking-wider text-xs font-bold px-8 shadow-[0_0_20px_rgba(228,191,128,0.2)] hover:shadow-[0_0_30px_rgba(228,191,128,0.4)] transition-all"
-												onClick={() => {
-													void runSafeAction(handleLaunch);
-												}}
-											>
-												<Play className="mr-2 h-3.5 w-3.5" />
-												Deploy Agent
-											</Button>
-										</div>
+									<div className="mt-6 flex flex-wrap gap-3 justify-end items-center">
+										<Button
+											type="button"
+											variant="secondary"
+											onClick={analyzeCurrentPrompt}
+											className="border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10 hover:text-white h-11 uppercase tracking-wider text-xs font-bold px-6"
+										>
+											<Sparkles className="mr-2 h-3.5 w-3.5" />
+											Analyze
+										</Button>
+										<Button
+											type="button"
+											variant="outline"
+											disabled={isEvolving}
+											onClick={() => {
+												void runSafeAction(handleEvolve);
+											}}
+											className="border-[#0AC18E]/50 bg-[#0AC18E]/10 text-[#0AC18E] hover:bg-[#0AC18E]/20 h-11 uppercase tracking-wider text-xs font-bold px-6"
+										>
+											{isEvolving ? (
+												<Activity className="mr-2 h-4 w-4 animate-spin" />
+											) : (
+												<Zap className="mr-2 h-3.5 w-3.5" />
+											)}
+											{isEvolving ? "Evolving..." : "Evolve AI"}
+										</Button>
+										<Button
+											type="button"
+											className="bg-[#0AC18E] text-black hover:bg-[#cda460] h-11 uppercase tracking-wider text-xs font-bold px-8 shadow-[0_0_20px_rgba(228,191,128,0.2)] hover:shadow-[0_0_30px_rgba(228,191,128,0.4)] transition-all"
+											onClick={() => {
+												void runSafeAction(handleLaunch);
+											}}
+										>
+											<Play className="mr-2 h-3.5 w-3.5" />
+											Deploy Agent
+										</Button>
 									</div>
 								</div>
 							</div>
 						</div>
 					</div>
-
-					{/* Right Column: Analysis */}
 					<div className="lg:col-span-4 space-y-6">
 
 						{/* Analysis Score Card */}
@@ -479,6 +531,6 @@ export default function ForgePage() {
 					</div>
 				</div>
 			</div>
-		</main>
+		</main >
 	);
 }
