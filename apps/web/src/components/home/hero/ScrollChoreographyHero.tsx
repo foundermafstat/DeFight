@@ -178,7 +178,7 @@ export function ScrollChoreographyHero({
 						style={{ opacity: scrollY < viewportHeight * 0.5 ? 1 : 0 }}
 					>
 						<img
-							src="/db-logo.svg"
+							src="/defight-svg.svg"
 							alt="Unlimited"
 							className="h-32 md:h-64 xl:h-[64rem] w-auto fill-[#0AC18E] opacity-30"
 						/>
