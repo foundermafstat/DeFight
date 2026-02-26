@@ -13,7 +13,7 @@ Rules:
 - Use amount_pct in [0..100].
 - Output JSON only, no markdown, no extra text.
 Output schema:
-{"action":"BUY|SELL|HOLD","asset":"BNB","amount_pct":10,"reason":"short rationale"}
+{"action":"BUY|SELL|HOLD","asset":"BCH","amount_pct":10,"reason":"short rationale"}
 Risk constraints:
 - BUY only if momentum and volume support entry.
 - SELL if downside risk rises or strategy invalidates.
@@ -26,7 +26,7 @@ Input market data format:
 
 ```json
 {
-  "symbol": "BNBUSDT",
+  "symbol": "BCHUSDT",
   "price": 612.44,
   "priceChangePercent": 1.93,
   "volume": 250321.1,

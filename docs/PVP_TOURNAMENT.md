@@ -8,7 +8,7 @@
 
 ## Tick Loop
 
-1. Fetch one market snapshot (`BNBUSDT`).
+1. Fetch one market snapshot (`BCHUSDT`).
 2. Run agent A decision + execution simulation.
 3. Run agent B decision + execution simulation.
 4. Update both scores on-chain through `updateScore`.

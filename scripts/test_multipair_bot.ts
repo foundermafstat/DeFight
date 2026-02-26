@@ -27,7 +27,7 @@ class MultiPairPortfolio {
             baseBalance: this.baseBalances[baseAsset] || 0,
             initialCapital: this.initialCapital,
             lastPnl: 0,
-            depositBnb: 0,
+            depositBCH: 0,
         };
     }
 

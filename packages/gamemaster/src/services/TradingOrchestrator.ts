@@ -90,24 +90,24 @@ export class TradingOrchestrator {
 
 		try {
 			// Simulate initial deposit for paper trading
-			const initialBalances = { bnb: SIMULATED_INITIAL_DEPOSIT_BCH, token: 0 };
+			const initialBalances = { BCH: SIMULATED_INITIAL_DEPOSIT_BCH, token: 0 };
 			const portfolio = await this.getOrCreatePortfolio(input.agent.playerAddress);
-			portfolio.baseBalance = initialBalances.bnb;
+			portfolio.baseBalance = initialBalances.BCH;
 			portfolio.quoteBalance = initialBalances.token;
 
 			const m = await this.marketDataService.getSnapshot(input.symbol);
 			if (m && m.price > 0) {
 				portfolio.initialMarketPrice = m.price;
-				const startBnb = initialBalances.bnb;
+				const startBCH = initialBalances.BCH;
 				const startTokens = initialBalances.token;
-				const totalStartValueInBnb = startBnb + (startTokens / m.price);
-				portfolio.initialTotalBnbValue = totalStartValueInBnb;
+				const totalStartValueInBCH = startBCH + (startTokens / m.price);
+				portfolio.initialTotalBCHValue = totalStartValueInBCH;
 
-				console.log(`[TradingOrchestrator] Session Start: ${startBnb.toFixed(6)} BCH + ${startTokens.toFixed(2)} Tokens | Total Value: ${totalStartValueInBnb.toFixed(6)} BCH`);
+				console.log(`[TradingOrchestrator] Session Start: ${startBCH.toFixed(6)} BCH + ${startTokens.toFixed(2)} Tokens | Total Value: ${totalStartValueInBCH.toFixed(6)} BCH`);
 			}
 
-			if (!portfolio.depositBnb) {
-				portfolio.depositBnb = initialBalances.bnb;
+			if (!portfolio.depositBCH) {
+				portfolio.depositBCH = initialBalances.BCH;
 			}
 		} catch (e) {
 			console.warn("[TradingOrchestrator] Could not snapshot initial deposit:", e);
@@ -168,16 +168,16 @@ export class TradingOrchestrator {
 		let roiPct = 0;
 		try {
 			const finalMarket = await this.marketDataService.getSnapshot(input.symbol);
-			const finalBnb = portfolio.baseBalance;
-			const initialBnb = portfolio.depositBnb;
+			const finalBCH = portfolio.baseBalance;
+			const initialBCH = portfolio.depositBCH;
 
-			if (initialBnb && initialBnb > 0.0001) {
-				const pnlBnb = finalBnb - initialBnb;
-				roiPct = (pnlBnb / initialBnb) * 100;
-				finalPnl = pnlBnb * finalMarket.price;
+			if (initialBCH && initialBCH > 0.0001) {
+				const pnlBCH = finalBCH - initialBCH;
+				roiPct = (pnlBCH / initialBCH) * 100;
+				finalPnl = pnlBCH * finalMarket.price;
 				console.log(
-					`[TradingOrchestrator] Final ROI: Initial=${initialBnb.toFixed(6)} BCH,` +
-					` Final=${finalBnb.toFixed(6)} BCH → PnL=${pnlBnb.toFixed(6)} BCH ($${finalPnl.toFixed(4)}), ROI=${roiPct.toFixed(2)}%`
+					`[TradingOrchestrator] Final ROI: Initial=${initialBCH.toFixed(6)} BCH,` +
+					` Final=${finalBCH.toFixed(6)} BCH → PnL=${pnlBCH.toFixed(6)} BCH ($${finalPnl.toFixed(4)}), ROI=${roiPct.toFixed(2)}%`
 				);
 			} else {
 				finalPnl = 0;
@@ -294,7 +294,7 @@ export class TradingOrchestrator {
 			baseBalance: SIMULATED_INITIAL_DEPOSIT_BCH,
 			initialCapital: 0,
 			lastPnl: 0,
-			depositBnb: SIMULATED_INITIAL_DEPOSIT_BCH,
+			depositBCH: SIMULATED_INITIAL_DEPOSIT_BCH,
 		};
 
 		this.portfolios.set(key, starting);

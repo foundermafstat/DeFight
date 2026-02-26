@@ -79,7 +79,7 @@ export class AIAgentService {
 
 	/**
 	 * Balance-aware heuristic:
-	 *   Phase 1: Have BNB, no USDT → SELL BNB→USDT
+	 *   Phase 1: Have BCH, no USDT → SELL BCH→USDT
 	 *   Phase 2: Have USDT → BUY the token that dipped the most since 24h open
 	 *            OR primary token if no multi-market data
 	 */
@@ -88,27 +88,27 @@ export class AIAgentService {
 		portfolio: PortfolioState,
 		allMarkets?: MarketSnapshot[],
 	): string {
-		const baseAsset = "BNB";
+		const baseAsset = "BCH";
 
-		const bnbVal = portfolio.baseBalance * market.price;
+		const BCHVal = portfolio.baseBalance * market.price;
 		const usdtVal = portfolio.quoteBalance;
 
 		// Simple 12% Rebalance Strategy
-		if (usdtVal > bnbVal) {
-			console.log(`[AIAgentService] Heuristic: BUY 12% (USDT ${usdtVal.toFixed(2)} > BNB ${bnbVal.toFixed(2)})`);
+		if (usdtVal > BCHVal) {
+			console.log(`[AIAgentService] Heuristic: BUY 12% (USDT ${usdtVal.toFixed(2)} > BCH ${BCHVal.toFixed(2)})`);
 			return JSON.stringify({
 				action: "BUY",
 				asset: baseAsset,
 				amount_pct: 12, // User requested 12% swap
-				reason: `Rebalance: Buying 12% (USDT > BNB).`,
+				reason: `Rebalance: Buying 12% (USDT > BCH).`,
 			});
 		} else {
-			console.log(`[AIAgentService] Heuristic: SELL 12% (BNB ${bnbVal.toFixed(2)} >= USDT ${usdtVal.toFixed(2)})`);
+			console.log(`[AIAgentService] Heuristic: SELL 12% (BCH ${BCHVal.toFixed(2)} >= USDT ${usdtVal.toFixed(2)})`);
 			return JSON.stringify({
 				action: "SELL",
 				asset: baseAsset,
 				amount_pct: 12, // User requested 12% swap
-				reason: `Rebalance: Selling 12% (BNB >= USDT).`,
+				reason: `Rebalance: Selling 12% (BCH >= USDT).`,
 			});
 		}
 	}

@@ -486,7 +486,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		}
 	};
 
-	const ensureBnbTestnet = async () => {
+	const ensureBCHTestnet = async () => {
 		// No-op for BCH
 	};
 
@@ -1091,7 +1091,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 			const txHash: string | undefined = payload.executionDetails?.txHash || undefined;
 			// Show a trade-executed badge when we have an actual on-chain tx
 			const tradeTag = txHash ? ` ✅ ${payload.executionDetails?.side ?? action}` : "";
-			const message = `${payload.agentName}: ${action} ${pct}%${tradeTag} | BNB ${payload.market?.price?.toFixed(2)} | PnL ${payload.pnl?.toFixed(2)} USDT${scanInfo} | ${payload.decision?.reason || "n/a"}`;
+			const message = `${payload.agentName}: ${action} ${pct}%${tradeTag} | BCH ${payload.market?.price?.toFixed(2)} | PnL ${payload.pnl?.toFixed(2)} USDT${scanInfo} | ${payload.decision?.reason || "n/a"}`;
 
 			if (payload.source === "tournament") {
 				const normalized = String(payload.playerAddress || "").toLowerCase();

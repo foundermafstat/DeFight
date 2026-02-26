@@ -10,7 +10,7 @@
   "scripts": {
     "dev:web": "npm --workspace @aibattles/web run dev",
     "dev:server": "npm run build:engine && npm --workspace @aibattles/gamemaster run dev",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "dev": "npx -y kill-port 3000 3001 && concurrently \"npm run dev:server\" \"npm run dev:web\"",
     "build:engine": "npm --workspace @aibattles/engine run build",
     "build:sdk": "npm --workspace @aibattles/sdk run build",
     "build:gm": "npm --workspace @aibattles/gamemaster run build",

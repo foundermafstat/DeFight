@@ -11,7 +11,7 @@ LLM must respond with JSON only:
 ```json
 {
   "action": "BUY",
-  "asset": "BNB",
+  "asset": "BCH",
   "amount_pct": 10,
   "reason": "Momentum confirmed by volume"
 }
@@ -25,7 +25,7 @@ LLM must respond with JSON only:
    - `asset`: string
    - `amount_pct`: 0..100
    - `reason`: bounded text
-3. Verify asset/symbol consistency (`BNB` vs `BNBUSDT`).
+3. Verify asset/symbol consistency (`BCH` vs `BCHUSDT`).
 4. Convert to executable call:
    - BUY => use `quoteOrderQty`
    - SELL => use `quantity`
@@ -37,7 +37,7 @@ LLM must respond with JSON only:
   "endpoint": "/api/v3/order",
   "method": "POST",
   "payload": {
-    "symbol": "BNBUSDT",
+    "symbol": "BCHUSDT",
     "side": "BUY",
     "type": "MARKET",
     "quoteOrderQty": "100.00"
@@ -51,7 +51,7 @@ LLM must respond with JSON only:
 import { processAgentSignal } from "@aibattles/engine";
 
 const result = processAgentSignal(llmJson, {
-  symbol: "BNBUSDT",
+  symbol: "BCHUSDT",
   quoteAsset: "USDT",
   quoteBalance: 1000,
   baseBalance: 0.5,

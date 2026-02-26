@@ -33,7 +33,7 @@ const AUTH_NONCE_TTL_MS = Number(process.env.AUTH_NONCE_TTL_MS || 5 * 60 * 1000)
 const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "awb_auth";
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-const DEFAULT_SYMBOL = process.env.DEFAULT_SYMBOL || "BNBUSDT";
+const DEFAULT_SYMBOL = process.env.DEFAULT_SYMBOL || "BCHUSDT";
 const DEFAULT_CYCLES = Number(process.env.DEFAULT_AGENT_CYCLES || 3);
 const DEFAULT_INTERVAL_MS = Number(process.env.DEFAULT_AGENT_INTERVAL_MS || 7000);
 const TOURNAMENT_DURATION_SEC = Number(process.env.TOURNAMENT_DURATION_SEC || 900);
@@ -76,7 +76,7 @@ const tradingOrchestrator = new TradingOrchestrator(
 	leaderboardService,
 );
 
-const bchService = new BchService(process.env.ORACLE_PRIVATE_KEY || "");
+const bchService = new BchService(process.env.ESCROW_SEED_PHRASE || "");
 // Initialize the BCH Oracle Wallet
 void bchService.init().catch(console.error);
 
@@ -798,17 +798,17 @@ app.post("/agents/stop", requireAuth, async (req: AuthedRequest, res) => {
 			const portfolio = tradingOrchestrator.getPortfolio(playerAddress);
 
 			if (portfolio) {
-				const finalBnb = portfolio.baseBalance;
-				const initialBnb = portfolio.depositBnb;
+				const finalBCH = portfolio.baseBalance;
+				const initialBCH = portfolio.depositBCH;
 
-				if (initialBnb && initialBnb > 0.0001) {
-					const pnlBnb = finalBnb - initialBnb;
-					roiPct = (pnlBnb / initialBnb) * 100;
-					finalPnl = pnlBnb * market.price;
+				if (initialBCH && initialBCH > 0.0001) {
+					const pnlBCH = finalBCH - initialBCH;
+					roiPct = (pnlBCH / initialBCH) * 100;
+					finalPnl = pnlBCH * market.price;
 
 					console.log(
-						`[GameMaster] Stop Stats: Initial=${initialBnb.toFixed(4)} BCH, Final=${finalBnb.toFixed(4)} BCH ` +
-						`→ PnL=${pnlBnb.toFixed(4)} BCH ($${finalPnl.toFixed(2)}), ROI=${roiPct.toFixed(2)}%`
+						`[GameMaster] Stop Stats: Initial=${initialBCH.toFixed(4)} BCH, Final=${finalBCH.toFixed(4)} BCH ` +
+						`→ PnL=${pnlBCH.toFixed(4)} BCH ($${finalPnl.toFixed(2)}), ROI=${roiPct.toFixed(2)}%`
 					);
 				} else {
 					finalPnl = portfolio.lastPnl ?? 0;

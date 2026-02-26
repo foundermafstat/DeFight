@@ -3,11 +3,11 @@ import { FilebaseService } from './FilebaseService';
 
 export class BchService {
     private wallet: TestNetWalletType | null = null;
-    private wif: string;
+    private seedPhrase: string;
     private filebaseService: FilebaseService;
 
-    constructor(wif: string) {
-        this.wif = wif;
+    constructor(seedPhrase: string) {
+        this.seedPhrase = seedPhrase;
         this.filebaseService = new FilebaseService();
     }
 
@@ -16,7 +16,12 @@ export class BchService {
      */
     public async init() {
         const { TestNetWallet } = await eval('import("mainnet-js")');
-        this.wallet = await TestNetWallet.fromWIF(this.wif);
+        try {
+            this.wallet = await TestNetWallet.fromSeed(this.seedPhrase, "m/44'/1'/0'/0/0");
+        } catch (error) {
+            console.warn(`[BchService] Error initializing from seed. Generating a random Testnet oracle wallet instead...`, error);
+            this.wallet = await TestNetWallet.newRandom();
+        }
         console.log(`BCH Oracle Wallet Address: ${this.wallet!.cashaddr}`);
     }
 

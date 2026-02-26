@@ -2,7 +2,7 @@ import axios from "axios";
 import { MarketSnapshot } from "../types";
 
 /** Volatile pairs the multi-asset agent watches by default */
-export const WATCHED_SYMBOLS = ["BNBUSDT", "BTCUSDT", "ETHUSDT", "SOLUSDT", "DOTUSDT"] as const;
+export const WATCHED_SYMBOLS = ["BCHUSDT", "BTCUSDT", "ETHUSDT", "SOLUSDT", "DOTUSDT"] as const;
 
 export class MarketDataService {
 	private readonly baseUrl: string;
@@ -10,7 +10,7 @@ export class MarketDataService {
 
 	/** Per-symbol fallback prices for multi-asset mode */
 	private fallbacks: Record<string, number> = {
-		BNBUSDT: 600,
+		BCHUSDT: 600,
 		BTCUSDT: 85000,
 		ETHUSDT: 2800,
 		SOLUSDT: 150,
@@ -22,10 +22,10 @@ export class MarketDataService {
 		this.fallbackPrice = 600;
 	}
 
-	async getSnapshot(symbol = "BNBUSDT"): Promise<MarketSnapshot> {
+	async getSnapshot(symbol = "BCHUSDT"): Promise<MarketSnapshot> {
 		const isReverse = symbol.startsWith("USDT") && symbol.length > 4 && !symbol.endsWith("USDT");
 		const canonicalSymbol = isReverse
-			? `${symbol.slice(4)}USDT` // e.g., USDTBNB -> BNBUSDT
+			? `${symbol.slice(4)}USDT` // e.g., USDTBCH -> BCHUSDT
 			: symbol;
 
 		try {

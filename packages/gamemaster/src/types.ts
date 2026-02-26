@@ -18,11 +18,11 @@ export interface PortfolioState {
 	baseBalance: number;
 	initialCapital: number;
 	lastPnl: number;
-	/** BNB amount deposited at session start — used for final ROI calculation */
-	depositBnb?: number;
-	/** Total portfolio value in BNB terms at session start (includes existing token holdings) */
-	initialTotalBnbValue?: number;
-	/** BNB Price at session start */
+	/** BCH amount deposited at session start — used for final ROI calculation */
+	depositBCH?: number;
+	/** Total portfolio value in BCH terms at session start (includes existing token holdings) */
+	initialTotalBCHValue?: number;
+	/** BCH Price at session start */
 	initialMarketPrice?: number;
 	/** Balances of other watched tokens (e.g. BTC, ETH, SOL) */
 	assets?: Record<string, number>;

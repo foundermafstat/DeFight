@@ -6,12 +6,12 @@ describe("processAgentSignal", () => {
     const { decision, exchangeCall } = processAgentSignal(
       {
         action: "BUY",
-        asset: "BNB",
+        asset: "BCH",
         amount_pct: 25,
         reason: "Momentum breakout",
       },
       {
-        symbol: "BNBUSDT",
+        symbol: "BCHUSDT",
         quoteAsset: "USDT",
         quoteBalance: 1000,
         baseBalance: 2,
@@ -27,12 +27,12 @@ describe("processAgentSignal", () => {
     const { exchangeCall } = processAgentSignal(
       {
         action: "HOLD",
-        asset: "BNB",
+        asset: "BCH",
         amount_pct: 0,
         reason: "No clear edge",
       },
       {
-        symbol: "BNBUSDT",
+        symbol: "BCHUSDT",
         quoteAsset: "USDT",
         quoteBalance: 1000,
         baseBalance: 2,

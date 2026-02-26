@@ -34,7 +34,7 @@ create table if not exists public.user_prompt_models (
   model_name text not null,
   prompt_text text not null,
   llm_model text not null default 'gpt-4.1-mini',
-  symbol text not null default 'BNBUSDT',
+  symbol text not null default 'BCHUSDT',
   settings_json jsonb not null default '{}'::jsonb,
   total_runs integer not null default 0,
   total_trades integer not null default 0,
