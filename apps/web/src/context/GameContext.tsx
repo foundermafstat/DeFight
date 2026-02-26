@@ -777,14 +777,14 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 			throw new Error("Model not found or not minted.");
 		}
 
-		// Import the compiled CashScript artifact
 		const artifact = await import("@aibattles/gamemaster/contracts/artifacts/dft_market.json");
-		const priceSats = Math.floor(priceBch * 100000000);
+		const priceSats = BigInt(Math.floor(priceBch * 100000000));
 
 		const { ElectrumNetworkProvider } = await import("cashscript");
 		const provider = new ElectrumNetworkProvider("chipnet");
 		const sellerAddress = wallet.cashaddr!;
-		const contract = new Contract(artifact.default || artifact, [sellerAddress, priceSats], { provider });
+		const sellerPkh = wallet.getPublicKeyHash(true) as string;
+		const contract = new Contract(artifact.default || artifact, [sellerPkh, priceSats], { provider });
 
 		setStatus("Locking NFT in Contract...");
 		const { txId } = await wallet.send([
@@ -846,7 +846,11 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		const priceSats = BigInt(Math.floor(priceBch * 100000000));
 		const artifact = await import("@aibattles/gamemaster/contracts/artifacts/dft_market.json");
 		const provider = new ElectrumNetworkProvider("chipnet");
-		const contract = new Contract(artifact.default || artifact, [sellerAddress, priceSats], { provider });
+
+		const sellerWallet = await TestNetWallet.watchOnly(sellerAddress);
+		const sellerPkh = sellerWallet.getPublicKeyHash(true) as string;
+
+		const contract = new Contract(artifact.default || artifact, [sellerPkh, priceSats], { provider });
 
 		setStatus("Executing Buy Contract...");
 

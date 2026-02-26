@@ -660,7 +660,8 @@ app.post('/models/:modelId/mint', requireAuth, async (req: AuthedRequest, res: R
 		const updatedSettings = {
 			...model.settings_json,
 			tokenId: mintResult.tokenId,
-			ipfsUri: mintResult.ipfsUri
+			ipfsUri: mintResult.ipfsUri,
+			ipfsImageUrl: chartUpload.uri
 		};
 
 		const updatedModel = await accountModelsStore.upsertModelForUser({

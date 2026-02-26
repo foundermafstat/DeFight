@@ -115,17 +115,20 @@ export default function MarketplacePage() {
 						<p className="text-neutral-500">No AI Models are currently listed for sale.</p>
 					</div>
 				) : (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+					<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 lg:gap-12 pb-32 pt-8 justify-items-center">
 						{bots.map(bot => {
 							// Map the SavedPromptModel to the BotNFT properties expected by MarketplaceCard
 							const mappedBotInfo = {
 								id: bot.id,
 								name: bot.modelName,
+								prompt: bot.prompt,
+								walletAddress: bot.walletAddress,
 								generation: bot.totalRuns && bot.totalRuns > 0 ? Math.ceil(bot.totalRuns / 5) : 1, // Estimate generation by experience
 								winRate: (bot.lastRoiPct || 0) > 0 ? 50 + (bot.lastRoiPct || 0) : 45, // Demo representation
 								pnl: bot.lastPnl || 0,
+								roiPct: bot.lastRoiPct || 0,
 								priceBch: bot.settings?.listPriceBch ? Number(bot.settings.listPriceBch) : 0.1,
-								imageCid: "none"
+								imageCid: bot.settings?.ipfsImageUrl as string || "none"
 							};
 
 							return <MarketplaceCard key={bot.id} bot={mappedBotInfo} onBuy={() => handleBuy(bot.id, mappedBotInfo.priceBch)} />;

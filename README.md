@@ -1,14 +1,15 @@
 # DeFight: Autonomous Trading Agent Arena
 
 **Status**: MVP / Alpha  
-**Network**: Chipnet (tBCH)  
+**Network**: Bitcoin Cash (BCH) Chipnet  
 **Architecture**: Event-Driven Monorepo (Node.js + Next.js + CashTokens)
 
-DeFight is a platform where user-defined AI agents trade crypto assets in real-time, competing in PvP tournaments or solo runs. The system features a unique **Execution Engine** that deterministically simulates exchange orders from LLM outputs, a **Game Master** orchestrator that manages high-frequency loops, and an **Oracle-Gated Leaderboard** anchored on the Bitcoin Cash blockchain using CashTokens.
+DeFight is a decentralized platform where user-defined AI agents trade crypto assets in real-time, competing in PvP tournaments or solo runs. The system features a unique **Execution Engine** that deterministically simulates exchange orders from LLM outputs, a **Game Master** orchestrator that manages high-frequency loops, and a fully on-chain **Marketplace and Tournament System** anchored on the Bitcoin Cash blockchain using CashTokens.
 
-Oracle Wallet Address:              bchtest:qph70sq2j744hgkes7dlxcydtgann6vdxclwgzrdre
-Tournament Contract:                bchtest:pvn7x6kc2rm8a6smmlpyewp85tese0t78tcep7mmlyxjlmsc6jsqv3u65hdal
-Marketplace Template Contract:      bchtest:pvl3777jjmjlhpjzdephc9f64pfhnt4fdt3mgaphjlx4796l8znhkcmhwknrx
+**Verified Smart Contracts (Chipnet)**:
+- Oracle Wallet Address: `bchtest:qph70sq2j744hgkes7dlxcydtgann6vdxclwgzrdre`
+- Market Contract (Template): `bchtest:pvl3777jjmjlhpjzdephc9f64pfhnt4fdt3mgaphjlx4796l8znhkcmhwknrx`
+- Tournament Contract (Template): `bchtest:pvn7x6kc2rm8a6smmlpyewp85tese0t78tcep7mmlyxjlmsc6jsqv3u65hdal`
 
 ---
 
@@ -16,18 +17,18 @@ Marketplace Template Contract:      bchtest:pvl3777jjmjlhpjzdephc9f64pfhnt4fdt3m
 
 1. [Architecture Overview](#-architecture-overview)
 2. [Project Structure Breakdown](#-project-structure-breakdown)
-3. [Deep Dive: GameMaster (Server)](#-deep-dive-gamemaster-server)
-4. [Deep Dive: Execution Engine](#-deep-dive-execution-engine)
-5. [The PvP Tournament System](#-the-pvp-tournament-system)
-6. [Data & Persistence Layer](#-data--persistence-layer)
-7. [Installation & Setup](#-installation--setup)
-8. [Configuration Guide](#-configuration-guide)
+3. [Deep Dive: Smart Contracts & CashTokens](#-deep-dive-smart-contracts--cashtokens)
+4. [Deep Dive: GameMaster (Server)](#-deep-dive-gamemaster-server)
+5. [Deep Dive: Execution Engine](#-deep-dive-execution-engine)
+6. [The PvP Tournament System](#-the-pvp-tournament-system)
+7. [Data & Persistence Layer](#-data--persistence-layer)
+8. [Installation & Setup](#-installation--setup)
 
 ---
 
 ## 🏛 Architecture Overview
 
-The platform uses a **Server-Side Proxy Architecture** to ensure fairness, security, and deterministic execution. Clients (browsers) do not execute trades or call LLMs directly; instead, they submit strategies and view state updates streamed via WebSockets.
+The platform uses a **Server-Side Proxy Architecture** coupled with **On-Chain Settlement** to ensure fairness, security, and deterministic execution. Clients (browsers) do not execute trades or call LLMs directly; instead, they submit strategies and view state updates streamed via WebSockets. Value transfer and ownership are secured by CashToken covenants.
 
 ### High-Level Data Flow
 
@@ -35,9 +36,9 @@ The platform uses a **Server-Side Proxy Architecture** to ensure fairness, secur
 2. **Orchestration**: The **GameMaster** (Node.js) starts a `RunSession`.
 3. **Market Tick**: Every 30s (configurable), the server fetches a snapshot from Binance (Public API).
 4. **AI Decision**: The **Engine** constructs a system prompt with the market snapshot + user strategy and queries OpenAI.
-5. **Execution Simulation**: The LLM's JSON response is validated by the **Middleman**, which converts it into an "Exchange Call". The server simulates this order against the live price, calculating fees and updating the virtual portfolio.
+5. **Execution Simulation**: The LLM's JSON response is validated by the **Middleman**, which converts it into an "Exchange Call" and executes a virtual trade.
 6. **State Broadcast**: `Live Logs`, `Portfolio`, and `PnL` are emitted via Socket.io to the Frontend.
-7. **Consensus**: The agent's final PnL is tracked and recorded leveraging CashTokens logic.
+7. **Consensus & Minting**: The agent's final PnL is anchored on-chain by minting a **CashToken NFT** that stores the AI's generation, ROI, and performance metadata.
 
 ---
 
@@ -48,86 +49,80 @@ The codebase is a **Turborepo** monorepo containing three primary layers:
 ```text
 DeFight/
 ├── apps/
-│   └── web/                 # [Frontend] Next.js app. Dashboard, IDE, and Visualization.
+│   └── web/                 # [Frontend] Next.js app. Dashboard, IDE, Marketplace, and Visualization.
 ├── packages/
-│   ├── gamemaster/          # [Backend] The central nervous system. Express API + Socket.io.
+│   ├── gamemaster/          # [Backend] The central nervous system. Express API + Socket.io + CashScript integration.
+│   │   └── contracts/       # [Web3] CashScript smart contracts (.cash files + compiled JSON artifacts).
 │   ├── engine/              # [Logic] Pure logic package for prompt building and order routing.
 │   └── sdk/                 # [Shared] Types and Contract ABIs/Interfaces.
-├── contracts/               # [Web3] CashScript / CashToken logic for on-chain interactions.
-├── docs/                    # [Documentation] Architecture Deep Dives (Architecture, Engine, System Prompt).
+├── docs/                    # [Documentation] Architecture Deep Dives.
 └── scripts/                 # Utility scripts for wallet generation and deployment.
 ```
 
 ---
 
+## ⛓️ Deep Dive: Smart Contracts & CashTokens
+
+**Path**: `packages/gamemaster/contracts/`
+
+DeFight leverages Bitcoin Cash's **CashTokens** upgrade and **CashScript** covenants to enable a serverless, non-custodial economy around the AI agents. Agents are represented as NFTs, allowing users to buy, sell, and stake them natively on-chain.
+
+### 1. `dft_nft_token.cash` (GenerativeBotNFT)
+This contract serves as a global registry for non-transferable (Soulbound) AI bots. 
+- **Mutable Token Commitments**: Ownership and trading are implemented entirely by mutating the 40-byte NFT state commitment (`[20-byte owner PKH][8-byte price][12-byte bot hash]`).
+- **Built-in Marketplace**: Instead of relying on a centralized escrow, the NFT contains a `buy()` function allowing any user to atomic-swap the required BCH directly to the current owner to claim the NFT.
+- **Slippage Protection**: The buyer must define a maximum price limit to prevent front-running price updates.
+
+### 2. `dft_market.cash` (Marketplace)
+A decentralized escrow covenant for listing regular bots on the open market.
+- **Function `buy()`**: Enforces that the transaction transfers the exact `price` in satoshis to the `sellerPkh`, whilst simultaneously forwarding the locked NFT to the buyer.
+- **Function `cancel()`**: Allows the original seller to retrieve their NFT back to their wallet at any time, granted they provide a valid cryptographic signature.
+
+### 3. `dft_tournament.cash` (Tournament Escrow)
+Secures the PvP arena stakes. Players lock their NFTs and a specific amount of BCH into this contract.
+- **Function `resolveTournament()`**: Only the GameMaster (acting as an Oracle) can sign the resolution transaction. It automatically routes the total prize pool minus the platform fee (in basis points) to the `winnerPkh`.
+- **Refund mechanism**: If an error occurs, the funds can be refunded through a multi-sig consensus between the player and the GameMaster.
+
+---
+
 ## 🧠 Deep Dive: GameMaster (Server)
 
-**Path**: `packages/gamemaster/src`
+**Path**: `packages/gamemaster/src/`
 
-The `GameMaster` is the core backend service. It is designed to be **stateless** regarding game logic (delegating to `engine`) but **stateful** regarding active sessions and socket connections.
+The `GameMaster` is the core backend service. It is designed to be **stateless** regarding game logic (delegating to the `engine`) but **stateful** regarding active sessions and socket connections.
 
 ### Core Components (`src/services/`)
 
 #### 1. `TradingOrchestrator.ts`
-
 The heart of the simulation. It manages the lifecycle of a trading run:
-
 - **`runSession()`**: Executes a full loop of `N` cycles.
-- **`runStep()`**: Executes a single tick.
-    1. Fetches Market Data.
-    2. Calls AI Service.
-    3. Calls Engine (Middleman) to parse signal.
-    4. **`applyTrade()`**: A local exchange simulator.
+- **`runStep()`**: Executes a single tick. (Fetches Market Data -> Calls AI -> Parses Signal -> Applies Virtual Trade).
 
 #### 2. `TournamentService.ts`
+Manages 1v1 PvP Battles. Guarantees both agents receive the **exact same market snapshot** at the identical millisecond to ensure absolute fairness.
 
-Manages 1v1 PvP Battles.
+#### 3. `BchService.ts` & `FilebaseService.ts`
+Handles all direct blockchain interactions. 
+- Automatically generates SVG charts representing the agent's performance.
+- Uploads the charts and NFT metadata to decentralized IPFS storage via Filebase.
+- Mints the actual CashToken transactions broadcasting them to the BCH Chipnet network using `mainnet-js`.
 
-- **Synchronization**: It guarantees that both agents receive the **exact same market snapshot** at the exact same millisecond.
-- **Tick Loop**: Runs a `while` loop until `durationSec` expires.
-
-#### 3. `MarketDataService.ts`
-
-- Connects to Binance public API.
-- **Reverse Pair Support**: Automatically handles synthetic pairs.
-
-#### 4. `LeaderboardService.ts`
-
-Abstracts the storage layer.
-
-- **Supabase**: Syncs detailed history to a Postgres DB for analytics.
-- **Memory**: Falls back to RAM for local dev if no DB is configured.
-
-### Agent Lifecycle
-
-The system is designed so users only need to authenticate and authorize actions via their CashTokens-compatible wallet.
-
-1. **Creation**: User selects a template and clicks "Launch".
-2. **Deposit**: User locks `tBCH` or specific CashTokens to enter.
-3. **Run Session**: The `TradingOrchestrator` runs the agent loop.
-4. **Termination**: Auto-Stops after cycles complete, or user triggers Kill Switch.
-5. **Settlement**: Orchestrator calculates `Realized PnL` and handles refunds/payouts based on performance.
+#### 4. `LeaderboardService.ts` & `SupabaseAccountModelsStore.ts`
+Abstracts the storage layer. Syncs detailed history to a Postgres DB for analytics, tracking aggregate PnL, ROI, win rates, and evolution histories.
 
 ---
 
 ## ⚙️ Deep Dive: Execution Engine
 
-**Path**: `packages/engine/src`
+**Path**: `packages/engine/src/`
 
-The `engine` is a pure typescript package with no side effects.
-
-### Key Files
+The `engine` is a pure TypeScript package isolating LLM interactions.
 
 #### `middleman.ts`
-
-Translator between LLMs and Exchange APIs.
-
-- **`normalizeDecision`**: Zod schema validation.
+Translator between LLMs and Exchange APIs. Validates the required JSON outputs using strict Zod schemas.
 
 #### `systemPrompt.ts`
-
 Contains the "God Prompt" fed to the agent.
-
 ```json
 {"action":"BUY|SELL|HOLD", "asset":"BCH", "amount_pct":10, "reason":"..."}
 ```
@@ -136,19 +131,10 @@ Contains the "God Prompt" fed to the agent.
 
 ## ⚔️ The PvP Tournament System
 
-**Documentation**: `docs/PVP_TOURNAMENT.md`
-
-1. **Matchmaking**: Manual via API (`POST /tournament/start`).
-2. **The Tick**: Determinism ensured by feeding exact same timestamp/price.
+1. **Matchmaking**: Players submit their `modelId` and verify their on-chain Escrow Transaction (`txId`).
+2. **The Tick**: Determinism is ensured by feeding the exact same timestamp/price.
 3. **Winning Condition**: Highest PnL at `t=End` wins.
-
----
-
-## 💾 Data & Persistence Layer
-
-### Supabase (Application DB)
-
-Used for persistency of user data, prompts, and detailed run history (`auth_users`, `user_prompt_models`, etc.).
+4. **Resolution**: The GameMaster backend automatically generates the payload to unlock the `dft_tournament.cash` contract, sending the prize pool to the victor's wallet.
 
 ---
 
@@ -157,14 +143,15 @@ Used for persistency of user data, prompts, and detailed run history (`auth_user
 ### Prerequisites
 
 - Node.js 18+
-- Supabase Project (Optional, for full features)
+- Supabase Project (Database)
 - OpenAI API Key
+- Filebase API Key (for IPFS pinning)
 
 ### 1. Install Dependencies
 
 ```bash
 npm install
-npm --prefix contracts install
+npm --prefix packages/gamemaster/contracts install
 ```
 
 ### 2. Environment Configuration
@@ -175,7 +162,6 @@ Copy the examples to create your local env files:
 cp .env.example .env
 cp packages/gamemaster/.env.example packages/gamemaster/.env
 cp apps/web/.env.local.example apps/web/.env.local
-cp contracts/.env.example contracts/.env
 ```
 
 ### 3. Run the Development Server
@@ -194,7 +180,8 @@ npm run dev
 **Goal**: Create the ultimate "Colosseum" for AI Trading Agents on Bitcoin Cash.
 
 - [x] **MVP**: Solo runs, simple moving average strategies, manual PvP.
-- [x] **Web3 Integration**: Chipnet wallet login, Leaderboard.
-- [ ] **Automated Matchmaking**: Queue system for PvP.
-- [ ] **Staking**: Players stake CashTokens to enter tournaments; winner takes pot.
-- [ ] **Visual Backtesting**: replay historical market data to test prompts instantly.
+- [x] **Web3 Integration**: Chipnet wallet login, Leaderboard, CashToken Minting.
+- [x] **P2P Marketplace**: Trustless trading of soulbound/transferable Agent NFTs via smart contracts.
+- [ ] **Automated Matchmaking**: Queue system for continuous PvP.
+- [ ] **Staking**: Players stake CashTokens to empower agents; winners generate yield.
+- [ ] **Visual Backtesting**: Replay historical market data to test prompts instantly.
