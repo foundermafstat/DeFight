@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 
 export class FilebaseService {
@@ -31,35 +31,53 @@ export class FilebaseService {
 
     /**
      * Uploads a JSON metadata object to Filebase and automatically pins it to IPFS.
-     * @param metadata The JSON object containing NFT metadata (e.g. name, generation, properties)
-     * @returns The resulting CID and IPFS URI
+     * After uploading, performs a HeadObject request to retrieve the CID from Metadata.
      */
     public async uploadMetadata(metadata: any): Promise<{ cid: string; uri: string }> {
         const key = `defight-bot-metadata-${uuidv4()}.json`;
         const body = JSON.stringify(metadata, null, 2);
 
-        const command = new PutObjectCommand({
+        // 1. Upload the file
+        const putCommand = new PutObjectCommand({
             Bucket: this.bucket,
             Key: key,
             Body: body,
             ContentType: "application/json"
         });
+        await this.s3Client.send(putCommand);
 
-        const response = await this.s3Client.send(command);
+        // 2. HeadObject to get the CID from Filebase metadata
+        // Filebase stores the CID in the object's metadata after pinning
+        let cid: string | null = null;
+        try {
+            // Short delay to let Filebase pin the content
+            await new Promise(r => setTimeout(r, 1500));
 
-        // Filebase returns the IPFS CID in the x-amz-meta-cid header
-        const resMetadata = response.$metadata as any;
-        const cid = resMetadata.httpHeaders?.['x-amz-meta-cid'];
+            const headCommand = new HeadObjectCommand({
+                Bucket: this.bucket,
+                Key: key,
+            });
+            const headResponse = await this.s3Client.send(headCommand);
 
-        if (!cid) {
-            // In case the header is missing, we could construct it or fallback, but Filebase S3 API always includes it.
-            console.warn("Missing x-amz-meta-cid header from Filebase response");
-            return { cid: "unknown", uri: `https://${this.bucket}.s3.filebase.com/${key}` };
+            // Filebase puts CID in the Metadata map under 'cid' key
+            cid = headResponse.Metadata?.['cid'] || null;
+            console.log(`[FilebaseService] HeadObject metadata:`, headResponse.Metadata);
+        } catch (e) {
+            console.warn("[FilebaseService] HeadObject failed:", e);
         }
 
+        if (!cid) {
+            console.warn("[FilebaseService] Could not retrieve CID. Using bucket gateway URL.");
+            return {
+                cid: key,
+                uri: `https://${this.bucket}.s3.filebase.com/${key}`
+            };
+        }
+
+        console.log(`[FilebaseService] Pinned to IPFS: ${cid}`);
         return {
             cid,
-            uri: `ipfs://${cid}`
+            uri: `https://ipfs.filebase.io/ipfs/${cid}`
         };
     }
 }

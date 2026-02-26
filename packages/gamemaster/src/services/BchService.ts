@@ -6,23 +6,70 @@ export class BchService {
     private seedPhrase: string;
     private filebaseService: FilebaseService;
 
+    private readyPromise: Promise<void>;
+
     constructor(seedPhrase: string) {
         this.seedPhrase = seedPhrase;
         this.filebaseService = new FilebaseService();
+        this.readyPromise = this.init();
     }
 
     /**
-     * Initialize the Oracle server wallet.
+     * Wait for the service to be fully initialized and wallet prepared.
      */
-    public async init() {
+    public async waitForReady() {
+        await this.readyPromise;
+    }
+    private async init() {
         const { TestNetWallet } = await eval('import("mainnet-js")');
         try {
-            this.wallet = await TestNetWallet.fromSeed(this.seedPhrase, "m/44'/1'/0'/0/0");
+            this.wallet = await TestNetWallet.fromSeed(this.seedPhrase, "m/44'/145'/0'/0/0");
         } catch (error) {
             console.warn(`[BchService] Error initializing from seed. Generating a random Testnet oracle wallet instead...`, error);
             this.wallet = await TestNetWallet.newRandom();
         }
-        console.log(`BCH Oracle Wallet Address: ${this.wallet!.cashaddr}`);
+
+        if (!this.wallet) return;
+        console.log(`BCH Oracle Wallet Address: ${this.wallet.cashaddr}`);
+
+        // Ensure we have a UTXO with vout=0, required for tokenGenesis in mainnet-js
+        await this.prepareVout0();
+    }
+
+    private async prepareVout0() {
+        if (!this.wallet) return;
+
+        try {
+            let utxos = await this.wallet.getUtxos();
+            if (utxos.length === 0) {
+                console.warn("[BchService] Wallet has no UTXOs. Cannot prepare vout=0.");
+                return;
+            }
+            if (!utxos.some((u: any) => u.vout === 0)) {
+                console.log("[BchService] Creating vout=0 UTXO via self-send...");
+                const selfSend = await this.wallet.send([
+                    {
+                        cashaddr: this.wallet.cashaddr!,
+                        value: 1200,
+                        unit: 'sats'
+                    } as any
+                ]);
+                console.log(`[BchService] Self-send txId: ${selfSend.txId}`);
+
+                // Retry loop: wait for electrum indexer to pick up the new UTXO
+                for (let attempt = 0; attempt < 5; attempt++) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    utxos = await this.wallet.getUtxos();
+                    const hasVout0 = utxos.some((u: any) => u.vout === 0);
+                    console.log(`[BchService] vout=0 check attempt ${attempt + 1}: UTXOs=${utxos.length}, hasVout0=${hasVout0}`);
+                    if (hasVout0) break;
+                }
+            } else {
+                console.log("[BchService] Wallet already has a vout=0 UTXO ✓");
+            }
+        } catch (e) {
+            console.warn("[BchService] Could not prepare vout=0 UTXO:", e);
+        }
     }
 
     /**
@@ -44,7 +91,11 @@ export class BchService {
         initialWinRate: string,
         nftMetadata: any = {}
     ) {
+        await this.waitForReady();
         if (!this.wallet) throw new Error("Wallet not initialized");
+
+        // Final check for vout=0 before genesis
+        await this.prepareVout0();
 
         // 1. Upload generative NFT metadata to Filebase IPFS
         const fullMetadata = {

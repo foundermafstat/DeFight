@@ -77,8 +77,7 @@ const tradingOrchestrator = new TradingOrchestrator(
 );
 
 const bchService = new BchService(process.env.ESCROW_SEED_PHRASE || "");
-// Initialize the BCH Oracle Wallet
-void bchService.init().catch(console.error);
+// BchService self-initializes in constructor; use bchService.waitForReady() before wallet ops
 
 const tournamentService = new TournamentService(
 	tradingOrchestrator,
@@ -603,13 +602,13 @@ app.post('/models/:modelId/mint', requireAuth, async (req: AuthedRequest, res: R
 		const initialWinRate = model.total_runs ? ((model.profitable_trades / model.total_trades) * 100).toFixed(2) + "%" : "0%";
 		const generation = model.total_runs || 1;
 
-		// Mint the Cashtoken NFT
+		// Mint the CashToken NFT server-side using ESCROW wallet
 		const mintResult = await bchService.mintBotNft(
 			req.auth!.sub,
 			model.model_name,
 			generation,
 			initialWinRate,
-			{ traits: ["Pioneer"] } // Placeholders for actual generative metadata if any
+			{ traits: ["Pioneer"] }
 		);
 
 		// Save tokenId to Supabase model settings
@@ -640,6 +639,8 @@ app.post('/models/:modelId/mint', requireAuth, async (req: AuthedRequest, res: R
 		});
 	}
 });
+
+
 
 app.get("/models/:modelId/runs", requireAuth, async (req: AuthedRequest, res) => {
 	if (!accountModelsStore.isEnabled) {

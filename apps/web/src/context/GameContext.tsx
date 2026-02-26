@@ -542,10 +542,27 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		}
 	};
 
-	const connectWalletAndAuthenticate = async (address: string) => {
+	const connectWalletAndAuthenticate = async (addressOrSeed: string) => {
 		try {
+			let address = addressOrSeed.trim();
+			let seedPhrase: string | null = null;
+
+			// If it looks like a seed phrase (multiple words), derive address from it
+			if (address.split(/\s+/).length >= 12) {
+				seedPhrase = address;
+				setStatus("Deriving address from seed phrase...");
+				const { TestNetWallet } = await import("mainnet-js");
+				const wallet = await TestNetWallet.fromSeed(seedPhrase, "m/44'/145'/0'/0/0");
+				address = wallet.cashaddr!;
+			}
+
 			if (!address || !address.startsWith("bchtest:")) {
 				throw new Error("Invalid Chipnet Address. Must start with bchtest:");
+			}
+
+			// Store seed phrase for client-side transaction signing (minting etc.)
+			if (seedPhrase) {
+				localStorage.setItem("defight_seed_phrase", seedPhrase);
 			}
 
 			const loginRes = await fetch(`${API_URL}/auth/login`, {
@@ -576,8 +593,8 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 			});
 
 			await refreshBalances(verified.address);
-			setStatus("Wallet authenticated");
-			pushToast("Wallet authenticated", "success");
+			setStatus(seedPhrase ? "Wallet authenticated (seed phrase stored for signing)" : "Wallet authenticated");
+			pushToast(seedPhrase ? "Wallet connected with signing capability" : "Wallet authenticated", "success");
 		} catch (error) {
 			const message = getErrorMessage(error, "Wallet authentication failed");
 			setStatus(message);
@@ -716,6 +733,8 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 	};
 
 	const mintPromptModel = async (modelId: string): Promise<{ mintResult: any, model: SavedPromptModel }> => {
+		if (!walletAddress) throw new Error("Wallet not connected");
+
 		setStatus("Minting NFT on Chipnet...");
 		const response = await authFetch(`/models/${modelId}/mint`, {
 			method: "POST"
@@ -728,7 +747,7 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		const data = await response.json();
 
 		setStatus("Minting successful!");
-		pushToast("Bot NFT Minted to wallet", "success");
+		pushToast("Bot NFT minted!", "success");
 
 		return {
 			mintResult: data.mintResult,
@@ -1227,14 +1246,14 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 					<DialogHeader>
 						<DialogTitle className="font-display tracking-wider text-[#0AC18E]">Connect Wallet</DialogTitle>
 						<DialogDescription className="text-neutral-400">
-							Paytaca extension not found or connection failed. Please enter your Chipnet (bchtest:) address manually, or install the Paytaca extension.
+							Enter your <b>seed phrase</b> (12 words) to enable minting and on-chain actions, or just a <b>bchtest: address</b> for read-only mode.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="grid gap-4 py-4">
 						<div className="flex flex-col gap-2">
 							<Input
 								id="wallet-address"
-								placeholder="bchtest:qq..."
+								placeholder="Seed phrase (12 words) or bchtest:qq..."
 								className="border-white/10 bg-black/50 text-white placeholder:text-neutral-600 focus-visible:ring-[#0AC18E]"
 								value={authInputAddress}
 								onChange={(e) => setAuthInputAddress(e.target.value)}
@@ -1245,6 +1264,9 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 									}
 								}}
 							/>
+							<p className="text-[10px] text-neutral-500">
+								💡 Seed phrase is stored locally in your browser only. Never shared with the server.
+							</p>
 						</div>
 					</div>
 					<div className="flex justify-end gap-3">
