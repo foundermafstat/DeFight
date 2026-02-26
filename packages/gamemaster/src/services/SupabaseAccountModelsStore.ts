@@ -420,6 +420,24 @@ export class SupabaseAccountModelsStore {
 		return (data as ModelRow | null) ?? null;
 	}
 
+	public async getModelById(modelId: string): Promise<ModelRow | null> {
+		if (!this.client) {
+			return null;
+		}
+
+		const { data, error } = await this.client
+			.from(this.modelsTable)
+			.select("*")
+			.eq("id", modelId)
+			.maybeSingle();
+
+		if (error) {
+			throw new Error(`Supabase read model failed: ${error.message}`);
+		}
+
+		return (data as ModelRow | null) ?? null;
+	}
+
 	async listRandomModels(limit = 6): Promise<(PromptModelEntity & { walletAddress?: string; })[]> {
 		if (!this.client) {
 			return [];
@@ -459,6 +477,81 @@ export class SupabaseAccountModelsStore {
 			...this.mapModelRow(row as ModelRow),
 			walletAddress: userMap.get(row.user_id),
 		}));
+	}
+
+	async listMarketplaceModels(): Promise<(PromptModelEntity & { walletAddress?: string; })[]> {
+		if (!this.client) {
+			return [];
+		}
+
+		// Filter for models where isListed is true inside settings_json
+		const { data: models, error } = await this.client
+			.from(this.modelsTable)
+			.select("*")
+			.contains("settings_json", { isListed: true })
+			.order("updated_at", { ascending: false });
+
+		if (error) {
+			console.warn("Failed to list marketplace models:", error.message);
+			return [];
+		}
+
+		if (!models || models.length === 0) {
+			return [];
+		}
+
+		// Fetch the wallets
+		const userIds = [...new Set(models.map((m: any) => m.user_id))];
+		const { data: users } = await this.client
+			.from(this.usersTable)
+			.select("id, wallet_address")
+			.in("id", userIds);
+
+		const userMap = new Map((users ?? []).map((u: any) => [u.id, u.wallet_address]));
+
+		return models.map((row: any) => ({
+			...this.mapModelRow(row as ModelRow),
+			walletAddress: userMap.get(row.user_id),
+		}));
+	}
+
+	async transferModelOwnership(modelId: string, newWalletAddress: string): Promise<PromptModelEntity> {
+		if (!this.client) {
+			throw new Error("Supabase internal transfer failed: No Client");
+		}
+
+		// Ensure target user exists
+		const newUser = await this.upsertUser(newWalletAddress, 10001); // Assumes generic chainId 10001 for now
+
+		// Update the model to the new user_id, and remove the listing from settings_json
+		const currentModelRow = await this.getModelById(modelId);
+		if (!currentModelRow) {
+			throw new Error("Model not found in Supabase");
+		}
+
+		const currentSettings = currentModelRow.settings_json as Record<string, unknown> || {};
+		const nextSettings = { ...currentSettings };
+
+		// Remove isListed flags
+		delete nextSettings.isListed;
+		delete nextSettings.listPriceBch;
+
+		const { data, error } = await this.client
+			.from(this.modelsTable)
+			.update({
+				user_id: newUser.id,
+				settings_json: nextSettings,
+				updated_at: new Date().toISOString()
+			})
+			.eq("id", modelId)
+			.select("*")
+			.single();
+
+		if (error || !data) {
+			throw new Error(`Failed to transfer model ownership: ${error?.message}`);
+		}
+
+		return this.mapModelRow(data as ModelRow);
 	}
 
 	private mapModelRow(row: ModelRow): PromptModelEntity {

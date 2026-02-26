@@ -289,6 +289,8 @@ interface GameContextType {
 	savePromptModel: (input: SavePromptModelInput) => Promise<SavedPromptModel>;
 	evolvePromptModel: (modelId: string) => Promise<{ evolutionResult: any, model: SavedPromptModel; }>;
 	mintPromptModel: (modelId: string) => Promise<{ mintResult: any, model: SavedPromptModel; }>;
+	listModelOnMarket: (modelId: string, priceBch: number) => Promise<SavedPromptModel>;
+	buyMarketplaceModel: (modelId: string, priceBch: number) => Promise<SavedPromptModel>;
 	enterArenaEscrow: (tokenId: string) => Promise<string>;
 	enterTournament: (modelId: string, tokenId?: string) => Promise<{ message: string, tokenId: string; }>;
 	listModelRuns: (modelId: string, limit?: number) => Promise<SavedPromptModelRun[]>;
@@ -757,6 +759,128 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 			mintResult: data.mintResult,
 			model: data.model
 		};
+	};
+
+	const listModelOnMarket = async (modelId: string, priceBch: number): Promise<SavedPromptModel> => {
+		const seedPhrase = localStorage.getItem("defight_seed_phrase");
+		if (!seedPhrase) throw new Error("Local wallet seed phrase not found. Please re-authenticate.");
+		if (!walletAddress) throw new Error("User not authenticated.");
+
+		setStatus("Preparing Marketplace Transaction...");
+		const { TestNetWallet } = await import("mainnet-js");
+		const { Contract } = await import("cashscript");
+		const wallet = await TestNetWallet.fromSeed(seedPhrase, "m/44'/145'/0'/0/0");
+
+		const models = await listSavedModels();
+		const model = models.find(m => m.id === modelId);
+		if (!model || !model.settings?.tokenId) {
+			throw new Error("Model not found or not minted.");
+		}
+
+		// Import the compiled CashScript artifact
+		const artifact = await import("@aibattles/gamemaster/contracts/artifacts/dft_market.json");
+		const priceSats = Math.floor(priceBch * 100000000);
+
+		const { ElectrumNetworkProvider } = await import("cashscript");
+		const provider = new ElectrumNetworkProvider("chipnet");
+		const sellerAddress = wallet.cashaddr!;
+		const contract = new Contract(artifact.default || artifact, [sellerAddress, priceSats], { provider });
+
+		setStatus("Locking NFT in Contract...");
+		const { txId } = await wallet.send([
+			{
+				cashaddr: contract.address,
+				value: 1000,
+				unit: "sats",
+				tokenId: model.settings.tokenId as string,
+			}
+		] as any[]);
+
+		setStatus("Updating backend listing...");
+		const response = await authFetch("/marketplace/list", {
+			method: "POST",
+			body: JSON.stringify({
+				modelId,
+				priceBch,
+				txId
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error(await readErrorMessage(response));
+		}
+
+		const data = await response.json();
+		setStatus("Model listed successfully!");
+		pushToast("Listed on Marketplace!", "success");
+
+		return data.model;
+	};
+
+
+
+	const buyMarketplaceModel = async (modelId: string): Promise<SavedPromptModel> => {
+		const seedPhrase = localStorage.getItem("defight_seed_phrase");
+		if (!seedPhrase) throw new Error("Local wallet seed phrase not found. Please re-authenticate.");
+		if (!walletAddress) throw new Error("User not authenticated.");
+
+		setStatus("Preparing Purchase Transaction...");
+		const { TestNetWallet } = await import("mainnet-js");
+		const { ElectrumNetworkProvider, Contract, SignatureTemplate } = await import("cashscript");
+		const wallet = await TestNetWallet.fromSeed(seedPhrase, "m/44'/145'/0'/0/0");
+
+		const response = await authFetch("/marketplace");
+		if (!response.ok) throw new Error("Failed to fetch marketplace data");
+		const data = await response.json();
+		const model = data.models.find((m: any) => m.id === modelId);
+		if (!model) throw new Error("Model not found in marketplace.");
+
+		const priceBch = model.settings?.listPriceBch as number;
+		const sellerAddress = model.walletAddress as string;
+		const tokenId = model.settings?.tokenId as string;
+
+		if (!priceBch || !sellerAddress || !tokenId) {
+			throw new Error("Invalid listing configuration");
+		}
+
+		const priceSats = BigInt(Math.floor(priceBch * 100000000));
+		const artifact = await import("@aibattles/gamemaster/contracts/artifacts/dft_market.json");
+		const provider = new ElectrumNetworkProvider("chipnet");
+		const contract = new Contract(artifact.default || artifact, [sellerAddress, priceSats], { provider });
+
+		setStatus("Executing Buy Contract...");
+
+		const buyerAddress = wallet.cashaddr!;
+		const wif = wallet.privateKeyWif!;
+		const buyerTemplate = new SignatureTemplate(wif);
+
+		const contractUtxos = await contract.getUtxos();
+		const nftUtxo = contractUtxos.find(u => u.token?.category === tokenId);
+		if (!nftUtxo) throw new Error("NFT not found locked in the contract.");
+
+		const buyerUtxos = await provider.getUtxos(buyerAddress);
+		const safeUtxos = buyerUtxos.filter(u => !u.token);
+
+		setStatus("Sending Transaction...");
+		const tx = await (contract as any).functions
+			.buy()
+			.from(nftUtxo)
+			.from(safeUtxos, buyerTemplate)
+			.to(sellerAddress, priceSats)
+			.to(buyerAddress, BigInt(1000), { category: tokenId, amount: BigInt(0) })
+			.withHardcodedFee(BigInt(1000))
+			.send();
+
+		setStatus("Confirming purchase with backend...");
+		const backendRes = await authFetch("/marketplace/buy", {
+			method: "POST",
+			body: JSON.stringify({ modelId, txId: tx.txid })
+		});
+		if (!backendRes.ok) throw new Error("Backend failed to confirm purchase.");
+
+		setStatus("Purchase Successful!");
+		pushToast("Bought model on Marketplace!", "success");
+		return (await backendRes.json()).model;
 	};
 
 	const enterArenaEscrow = async (tokenId: string): Promise<string> => {
@@ -1271,6 +1395,8 @@ export function GameProvider({ children }: { children: ReactNode; }) {
 		savePromptModel,
 		evolvePromptModel,
 		mintPromptModel,
+		listModelOnMarket,
+		buyMarketplaceModel,
 		enterArenaEscrow,
 		enterTournament,
 		listModelRuns,

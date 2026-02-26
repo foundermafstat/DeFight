@@ -685,7 +685,92 @@ app.post('/models/:modelId/mint', requireAuth, async (req: AuthedRequest, res: R
 	}
 });
 
+// ==========================================
+// MARKETPLACE ROUTES
+// ==========================================
 
+app.get('/marketplace', async (req: Request, res: Response) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+
+	try {
+		const models = await accountModelsStore.listMarketplaceModels();
+		return res.json({ models });
+	} catch (e: any) {
+		console.error("Error listing marketplace:", e);
+		return res.status(500).json({ error: "Failed to list marketplace: " + e.message });
+	}
+});
+
+app.post('/marketplace/list', requireAuth, async (req: AuthedRequest, res: Response) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+
+	const { modelId, priceBch, txId } = req.body;
+	if (!modelId || typeof priceBch !== 'number' || !txId) {
+		return res.status(400).json({ error: "modelId, priceBch, and txId are required" });
+	}
+
+	try {
+		const user = await accountModelsStore.getUserByWallet(req.auth!.sub);
+		if (!user) {
+			return res.status(404).json({ error: "User not found" });
+		}
+
+		const model = await accountModelsStore.getModelByIdForUser(user.id, modelId);
+		if (!model) {
+			return res.status(404).json({ error: "Model not found or not owned by user" });
+		}
+
+		// Update the model settings to include listing data
+		const result = await accountModelsStore.upsertModelForUser({
+			walletAddress: req.auth!.sub,
+			chainId: req.auth!.chainId || 10001,
+			modelName: model.model_name,
+			prompt: model.prompt_text,
+			llmModel: model.llm_model,
+			symbol: model.symbol,
+			settings: {
+				...(model.settings_json as Record<string, unknown> || {}),
+				isListed: true,
+				listPriceBch: priceBch,
+				listTxId: txId,
+			}
+		});
+
+		return res.json({ ok: true, model: result });
+	} catch (e: any) {
+		console.error("Error listing model:", e);
+		return res.status(500).json({ error: "Failed to list model: " + e.message });
+	}
+});
+
+app.post('/marketplace/buy', requireAuth, async (req: AuthedRequest, res: Response) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+
+	const { modelId, txId } = req.body;
+	if (!modelId || !txId) {
+		return res.status(400).json({ error: "modelId and txId are required" });
+	}
+
+	try {
+		// In production, we should verify the `txId` on-chain to ensure
+		// it actually fulfilled the cashscript `buy()` covenant correctly.
+		// For MVP, we'll assume the client transaction succeeded and transfer ownership.
+
+		const newBuyerAddress = req.auth!.sub;
+		const updatedModel = await accountModelsStore.transferModelOwnership(modelId, newBuyerAddress);
+
+		return res.json({ ok: true, model: updatedModel });
+	} catch (e: any) {
+		console.error("Error buying model:", e);
+		return res.status(500).json({ error: "Failed to complete purchase: " + e.message });
+	}
+});
 
 app.get("/models/:modelId/runs", requireAuth, async (req: AuthedRequest, res) => {
 	if (!accountModelsStore.isEnabled) {
@@ -982,6 +1067,82 @@ app.post("/tournament/start", requireAuth, (req: AuthedRequest, res) => {
 			ok: false,
 			error: error instanceof Error ? error.message : "Cannot start tournament",
 		});
+	}
+});
+
+app.get("/marketplace", async (req, res) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+	try {
+		const models = await accountModelsStore.listMarketplaceModels();
+		return res.json({ ok: true, models });
+	} catch (error) {
+		return res.status(500).json({ error: error instanceof Error ? error.message : "Cannot list marketplace models" });
+	}
+});
+
+app.post("/marketplace/list", requireAuth, async (req: AuthedRequest, res) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+	const payload = req.body as Record<string, unknown>;
+	const txId = typeof payload.txId === "string" ? payload.txId : null;
+	const modelId = typeof payload.modelId === "string" ? payload.modelId : null;
+	const priceBch = typeof payload.priceBch === "number" ? payload.priceBch : null;
+
+	if (!txId || !modelId || priceBch === null) {
+		return res.status(400).json({ error: "txId, modelId, and priceBch are required" });
+	}
+
+	try {
+		const user = await accountModelsStore.getUserByWallet(req.auth!.sub);
+		if (!user) return res.status(404).json({ error: "User not found" });
+
+		const model = await accountModelsStore.getModelByIdForUser(user.id, modelId);
+		if (!model) return res.status(404).json({ error: "Model not found" });
+
+		const updatedSettings = {
+			...model.settings_json,
+			isListed: true,
+			listPriceBch: priceBch
+		};
+
+		const updatedModel = await accountModelsStore.upsertModelForUser({
+			walletAddress: req.auth!.sub,
+			chainId: req.auth!.chainId,
+			modelName: model.model_name,
+			prompt: model.prompt_text,
+			llmModel: model.llm_model,
+			symbol: model.symbol,
+			settings: updatedSettings,
+		});
+
+		return res.json({ ok: true, model: updatedModel });
+	} catch (error) {
+		return res.status(500).json({ error: error instanceof Error ? error.message : "Failed to list model" });
+	}
+});
+
+app.post("/marketplace/buy", requireAuth, async (req: AuthedRequest, res) => {
+	if (!accountModelsStore.isEnabled) {
+		return res.status(503).json({ error: "Supabase model storage is not configured" });
+	}
+	const payload = req.body as Record<string, unknown>;
+	const txId = typeof payload.txId === "string" ? payload.txId : null;
+	const modelId = typeof payload.modelId === "string" ? payload.modelId : null;
+
+	if (!txId || !modelId) {
+		return res.status(400).json({ error: "txId and modelId are required" });
+	}
+
+	try {
+		// Mock TX confirmation for the demo.
+		const transferredModel = await accountModelsStore.transferModelOwnership(modelId, req.auth!.sub);
+
+		return res.json({ ok: true, model: transferredModel });
+	} catch (error) {
+		return res.status(500).json({ error: error instanceof Error ? error.message : "Failed to buy model" });
 	}
 });
 

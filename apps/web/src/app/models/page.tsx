@@ -12,8 +12,9 @@ import {
 	useGame,
 } from "@/context/GameContext";
 import { getErrorMessage, runSafeAction } from "@/lib/safe-action";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PremiumCard } from "@/components/home/hero/PremiumCard";
-import { AgentPromptCardEntity } from "@/components/home/hero/types";
+import { AgentPromptCardEntity, PromptCardStatus } from "@/components/home/hero/types";
 import {
 	Sparkles,
 	Plus,
@@ -54,6 +55,7 @@ export default function ModelsPage() {
 		listSavedModels,
 		savePromptModel,
 		listModelRuns,
+		listModelOnMarket,
 	} = useGame();
 
 	const [modelName, setModelName] = useState(agentName || "Market Maverick");
@@ -65,6 +67,8 @@ export default function ModelsPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [models, setModels] = useState<SavedPromptModel[]>([]);
 	const [runsByModel, setRunsByModel] = useState<Record<string, SavedPromptModelRun[]>>({});
+	const [listingModel, setListingModel] = useState<SavedPromptModel | null>(null);
+	const [listingPrice, setListingPrice] = useState<string>("0.1");
 
 	const ownerAddress = authProfile?.address || walletAddress;
 	const totalModels = models.length;
@@ -194,6 +198,25 @@ export default function ModelsPage() {
 			setRunsByModel(Object.fromEntries(runsEntries));
 		} finally {
 			setIsLoading(false);
+		}
+	};
+
+	const handleListModel = async () => {
+		if (!listingModel) return;
+		setIsSaving(true);
+		try {
+			await listModelOnMarket(listingModel.id, parseFloat(listingPrice));
+			setListingModel(null);
+			await refreshModels();
+		} catch (error) {
+			notify({
+				title: "Listing Failed",
+				description: getErrorMessage(error, "Failed to list model"),
+				variant: "destructive",
+				duration: 5000,
+			});
+		} finally {
+			setIsSaving(false);
 		}
 	};
 
@@ -397,7 +420,7 @@ export default function ModelsPage() {
 											winRatePct: 50 + (model.lastRoiPct || 0), // heuristics for demo
 											updatedAtLabel: model.updatedAt ? new Date(model.updatedAt).toLocaleDateString() : "New",
 											sourceLabel: model.symbol,
-											status: "READY"
+											status: (model.settings?.isListed ? "LISTED" : "READY") as PromptCardStatus
 										};
 
 										return (
@@ -405,11 +428,15 @@ export default function ModelsPage() {
 												key={model.id}
 												card={cardEntity}
 												onActivate={() => {
-													// Example action: map to edit or just notify
-													notify({
-														title: "Model Selected",
-														description: `Loaded ${model.modelName} into active memory.`,
-													});
+													if (!model.settings?.tokenId) {
+														notify({ title: "Cannot List", description: "Mint the model first before listing." });
+														return;
+													}
+													if (model.settings?.isListed) {
+														notify({ title: "Already Listed", description: "This model is already on the marketplace." });
+														return;
+													}
+													setListingModel(model);
 												}}
 											/>
 										);
@@ -420,6 +447,36 @@ export default function ModelsPage() {
 					</div>
 				)}
 			</div>
+
+			<Dialog open={!!listingModel} onOpenChange={(open) => !open && setListingModel(null)}>
+				<DialogContent className="border-white/10 bg-[#121418] text-white sm:max-w-[425px]">
+					<DialogHeader>
+						<DialogTitle>List Model for Sale</DialogTitle>
+						<DialogDescription>
+							Set a price in BCH to list "{listingModel?.modelName}" on the marketplace.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-4 py-4">
+						<div className="flex flex-col gap-2">
+							<label className="text-xs uppercase text-neutral-400">Price (BCH)</label>
+							<Input
+								className="border-white/10 bg-black/20 text-white placeholder:text-neutral-700 h-10"
+								type="number"
+								min="0"
+								step="0.01"
+								value={listingPrice}
+								onChange={(e) => setListingPrice(e.target.value)}
+							/>
+						</div>
+					</div>
+					<div className="flex justify-end gap-3">
+						<Button variant="outline" className="border-white/10 bg-transparent text-white" onClick={() => setListingModel(null)}>Cancel</Button>
+						<Button className="bg-[#0AC18E] text-black hover:bg-[#cda460]" disabled={isSaving} onClick={() => void runSafeAction(handleListModel)}>
+							{isSaving ? "Listing..." : "List on Market"}
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</main>
 	);
 }
